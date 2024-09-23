@@ -1,0 +1,9 @@
+
+name: streamlit
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  - geopandas>=0.10.2 # Needs to be explicit otherwise the dependencies required to use sjoin are not installed
+  - streamlit
+  - streamlit-folium #- plotly_express
