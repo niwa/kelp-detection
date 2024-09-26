@@ -1,0 +1,18 @@
+
+name: satellite
+channels:
+  - conda-forge
+dependencies:
+  - python==3.11
+  - pip:
+    - rioxarray
+    - pystac-client
+    - odc-stac
+    - openeo
+    - geoapis
+    - python-dotenv
+    - netcdf4
+    - mapclassify # for geopandas.explore
+    - folium # for geopandas.explore
+    - matplotlib # for geopandas.explore
+    - ipykernel 
