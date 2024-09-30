@@ -4,7 +4,11 @@ import streamlit
 import streamlit_folium
 import argparse
 import pages.scripts.colourmaps
-from datetime import datetime
+import datetime
+import folium
+import rioxarray
+import odc.stac
+import branca
 
 def parse_args():
     """Expect a command line argument of the form:
@@ -34,24 +38,38 @@ def main(region_name: str):
         layout="wide",
     )
     display_size = 700
+    date_format = "%Y-%m-%d"
+    location = "waikouaiti"
     
     streamlit.button("Re-run")
     streamlit.title('Otago Kelp')
     
     # Define the region
-    regions = streamlit.session_state["regions"]
-    otago = regions[regions["name"]==region_name]
+    land = streamlit.session_state["land"]
+    data_path = streamlit.session_state["data_path"]
     
     # Select the date to display
-    
-    date = streamlit.slider("Select date?", value=datetime(2020, 1, 1), format="MM/DD/YY",)
+    files = list((data_path / "rasters" / location).glob(f"*.tif"))
+    dates = [datetime.datetime.strptime(file.stem.strip("kelp_"), date_format) for file in files]
+    date = streamlit.select_slider("Select date?", options=dates) #, format="MM/DD/YY",)
+    kelp_file = data_path / "rasters" / location / f"kelp_{date.strftime(date_format)}.tif"
 
     streamlit.subheader("Map View")
-    folium_map = otago.explore(column="name")#, cmap=pages.scripts.colourmaps.get_colourmap(otago, "name"))
-    st_data =  streamlit_folium.st_folium(folium_map, width=display_size, key=0)
+    folium_map = folium.Map()
+    land.explore(m=folium_map)
+
+    kelp_display = rioxarray.rioxarray.open_rasterio(kelp_file, chunks=True).squeeze( "band", drop=True)
+    kelp_display.odc.add_to(folium_map, opacity=0.75, cmap="inferno", vmin=0, vmax=1) # viridis
+    folium_map.fit_bounds(kelp_display.odc.map_bounds())
+    
+    colormap = branca.colormap.linear.inferno.scale(0, 1)
+    colormap.caption = 'Kelp Index'
+    colormap.add_to(folium_map)
+
+    st_data =  streamlit_folium.st_folium(folium_map, width=900)  
 
     streamlit.subheader("Table View")
-    streamlit.dataframe(regions[["name", "id"]])
+    #streamlit.dataframe(regions[["name", "id"]])
 
 
 if __name__ == '__main__':

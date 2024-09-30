@@ -14,9 +14,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--regions_path",
+        "--data_path",
         metavar="str",
-        default=r"/home/pearsonra/repos/kelp-dashboard-demo/lds-nz-land-districts-GPKG/nz-land-districts.gpkg",
+        default=r"C:\Local\repos\kelp-dashboard-demo\data", # r"/home/pearsonra/repos/kelp-dashboard-demo/data/vectors/regions.gpkg",
         action="store",
         help="The regions maps - The path to the regions geopackage file.",
     )
@@ -24,7 +24,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(regions_path: str):
+def main(data_path: str):
     """ Create / Update the catchment summary file and display in a dashboard.
     """
     
@@ -35,13 +35,16 @@ def main(regions_path: str):
         page_icon="🌊",
     )
  
-    regions_path = pathlib.Path(regions_path)
-    regions = geopandas.read_file(regions_path)
+    data_path = pathlib.Path(data_path)
+    land = geopandas.read_file(data_path / "vectors" / "main_islands.geojson")
+    regions = geopandas.read_file(data_path / "vectors" / "regions.gpkg")
     region_names = ["Otago", "Southland", "Canterbury", "Westland"]
     
     
-    if "regions" not in streamlit.session_state:
-        streamlit.session_state["regions"] = regions
+    if "land" not in streamlit.session_state:
+        streamlit.session_state["land"] = land
+    if "data_path" not in streamlit.session_state:
+        streamlit.session_state["data_path"] = data_path
     
      # Dashboard
     streamlit.title("Kelp Dashboard")
@@ -59,4 +62,4 @@ def main(regions_path: str):
 
 if __name__ == '__main__':
     args = parse_args()
-    main(regions_path=args.regions_path)
+    main(data_path=args.data_path)
