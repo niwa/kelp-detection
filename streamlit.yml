@@ -4,6 +4,14 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - geopandas>=0.10.2 # Needs to be explicit otherwise the dependencies required to use sjoin are not installed
+  - rioxarray
+  - geoapis
+  - pystac-client
+  - odc-stac
+  - netcdf4
+  - python-dotenv
   - streamlit
-  - streamlit-folium #- plotly_express
+  - streamlit-folium 
+  - plotly_express
+  pip:
+      - geoviz

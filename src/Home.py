@@ -7,24 +7,13 @@ import streamlit_folium
 import pages.scripts.colourmaps
 import matplotlib.colors
 
-def parse_args():
-    """Expect a command line argument of the form:
-    '--output_path path_to_output_folder'"""
 
-    parser = argparse.ArgumentParser()
+def geopandas_bounds_to_plot(dataframe, crs=4326):
+    """ Changing bounding box representation to leaflet notation ``(lon1, lat1, lon2, lat2) -> ((lat1, lon1), (lat2, lon2))`` """
+    x1, y1, x2, y2 = dataframe.to_crs(crs).total_bounds
+    return ((y1, x1), (y2, x2))
 
-    parser.add_argument(
-        "--data_path",
-        metavar="str",
-        default=r"C:\Local\repos\kelp-dashboard-demo\data", # r"/home/pearsonra/repos/kelp-dashboard-demo/data/vectors/regions.gpkg",
-        action="store",
-        help="The regions maps - The path to the regions geopackage file.",
-    )
-
-    return parser.parse_args()
-
-
-def main(data_path: str):
+def main():
     """ Create / Update the catchment summary file and display in a dashboard.
     """
     
@@ -35,8 +24,8 @@ def main(data_path: str):
         page_icon="🌊",
     )
  
-    data_path = pathlib.Path(data_path)
-    land = geopandas.read_file(data_path / "vectors" / "main_islands.geojson")
+    data_path = pathlib.Path.cwd() / "data"
+    land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     regions = geopandas.read_file(data_path / "vectors" / "regions.gpkg")
     region_names = ["Otago", "Southland", "Canterbury", "Westland"]
     
@@ -54,6 +43,7 @@ def main(data_path: str):
     streamlit.subheader("Maps - Regions")
     streamlit.caption("A caption")
     folium_map = regions.explore(column="name")#, cmap=pages.scripts.colourmaps.get_colourmap(regions, "name", region))
+    folium_map.fit_bounds(geopandas_bounds_to_plot(regions))
     st_data =  streamlit_folium.st_folium(folium_map, width=900)  
 
     streamlit.subheader("Tables - Overall Status of Each Stage")
@@ -61,5 +51,4 @@ def main(data_path: str):
     streamlit.dataframe(regions[["name", "id"]])
 
 if __name__ == '__main__':
-    args = parse_args()
-    main(data_path=args.data_path)
+    main()

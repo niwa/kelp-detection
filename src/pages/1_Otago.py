@@ -1,5 +1,7 @@
 import numpy
 import pandas
+import geopandas
+import pathlib
 import streamlit
 import streamlit_folium
 import argparse
@@ -9,26 +11,11 @@ import folium
 import rioxarray
 import odc.stac
 import branca
-
-def parse_args():
-    """Expect a command line argument of the form:
-    '--tiles_subpath subpath_to_tiles_folder'"""
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        "--region_name",
-        metavar="str",
-        default=r"Otago",
-        action="store",
-        help="The region name. Used to reference the region in the regions file.",
-    )
-
-    return parser.parse_args()
+import plotly.express
 
 
 
-def main(region_name: str):
+def main():
     """ Create / Update the geofabric summary information and display in a dashboard.
     """
     
@@ -45,11 +32,22 @@ def main(region_name: str):
     streamlit.title('Otago Kelp')
     
     # Define the region
-    land = streamlit.session_state["land"]
-    data_path = streamlit.session_state["data_path"]
+    data_path = pathlib.Path.cwd() / "data"
+    land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
+    #land = streamlit.session_state["land"]
+    #data_path = streamlit.session_state["data_path"]
+    
+    streamlit.subheader("Table and Plot of areas")
+    kelp_info = pandas.read_csv(data_path / "rasters" / location / "info.csv")
+    col1, col2 = streamlit.columns([1, 7])
+    with col1:
+        streamlit.dataframe(kelp_info[["date", "area"]])
+    with col2:
+        plot = plotly.express.line(kelp_info, x = 'date', y = ['area'])
+        streamlit.plotly_chart(plot)
     
     # Select the date to display
-    files = list((data_path / "rasters" / location).glob(f"*.tif"))
+    files = sorted((data_path / "rasters" / location).glob(f"*.tif"))
     dates = [datetime.datetime.strptime(file.stem.strip("kelp_"), date_format) for file in files]
     date = streamlit.select_slider("Select date?", options=dates) #, format="MM/DD/YY",)
     kelp_file = data_path / "rasters" / location / f"kelp_{date.strftime(date_format)}.tif"
@@ -59,6 +57,7 @@ def main(region_name: str):
     land.explore(m=folium_map)
 
     kelp_display = rioxarray.rioxarray.open_rasterio(kelp_file, chunks=True).squeeze( "band", drop=True)
+    # In future consider https://geoviews.org or saving as a png and loading...
     kelp_display.odc.add_to(folium_map, opacity=0.75, cmap="inferno", vmin=0, vmax=1) # viridis
     folium_map.fit_bounds(kelp_display.odc.map_bounds())
     
@@ -68,10 +67,6 @@ def main(region_name: str):
 
     st_data =  streamlit_folium.st_folium(folium_map, width=900)  
 
-    streamlit.subheader("Table View")
-    #streamlit.dataframe(regions[["name", "id"]])
-
 
 if __name__ == '__main__':
-    args = parse_args()
-    main(region_name=args.region_name)
+    main()

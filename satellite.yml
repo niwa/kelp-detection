@@ -8,7 +8,6 @@ dependencies:
     - rioxarray
     - pystac-client
     - odc-stac
-    - openeo
     - geoapis
     - python-dotenv
     - netcdf4
