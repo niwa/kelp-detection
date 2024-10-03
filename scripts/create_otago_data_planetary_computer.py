@@ -11,8 +11,6 @@ import planetary_computer
 import os
 import geoapis.vector
 
-OFFSET = -0.1
-SCALE = 0.0001
 
 def update_raster_defaults(raster):
     for key in raster.data_vars:
@@ -41,9 +39,13 @@ def main():
                 "cloud medium probability": 8, "cloud high probability": 9,
                 "thin cirrus": 10, "snow": 11}
     thresholds = {"min_ndvi": 0.01, "max_ndvi": 0.7, "max_ndwi": 0.2, "min_ndvri": 0.05}
+    thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
+    
+    cloud_by_year = {"2016": 20, "2017": 20, "2018": 20, "2019": 20, "2020": 20, "2021": 20, "2022": 20, "2023": 20}
+    ocean_cloud_threshold = 0.1
 
     data_path = pathlib.Path.cwd() / ".." / "data"
-    raster_path = data_path / "rasters" / f"{name}_planetarycomputer"
+    raster_path = data_path / "rasters" / f"{name}_pc"
     raster_path.mkdir(parents=True, exist_ok=True)
     (data_path / "vectors").mkdir(parents=True, exist_ok=True)
 
@@ -70,7 +72,6 @@ def main():
     geometry_query = geometry_df .to_crs(crs_wsg).iloc[0].geometry
 
     kelp_info = {"date": [], "file": [], "area": []}
-    cloud_by_year = {"2016": 30, "2017": 30, "2018": 20, "2019": 20, "2020": 5, "2021": 10, "2022": 5, "2023": 5}
 
     years = list(range(2016, 2024))
     for year in years:
@@ -95,6 +96,20 @@ def main():
             data["SCL"] = data["SCL"].rio.clip(land.to_crs(data["SCL"].rio.crs).geometry.values, invert=True, drop=False)
             data["SCL"].rio.write_crs(data["SCL"].rio.crs, inplace=True);
             data = data.isel(time=(data["SCL"] != scl_dict["no data"]).any(dim=["x", "y"]))
+            
+            # remove if much cloud over ocean
+            # Mask with 1s on ocean, 0 elsewhere
+            ocean_mask = data["SCL"].isel(time=0).copy(deep=True)
+            ocean_mask.data[:] = 1
+            ocean_mask = ocean_mask.rio.clip(land.to_crs(ocean_mask.rio.crs).geometry.values, invert=True)
+            # Mask by time - initially sums of clud values then true / false by time if less than cloud threshold
+            cloud_mask = (data["SCL"] == scl_dict["cloud high probability"]).sum(dim=["x", "y"]) 
+            cloud_mask += (data["SCL"] == scl_dict["cloud medium probability"]).sum(dim=["x", "y"]) 
+            cloud_mask += (data["SCL"] == scl_dict["defective"]).sum(dim=["x", "y"])
+            cloud_mask += (data["SCL"] == scl_dict["thin cirrus"]).sum(dim=["x", "y"])
+            cloud_mask += (data["SCL"] == scl_dict["no data"]).sum(dim=["x", "y"]) - int(ocean_mask.sum())
+            cloud_mask = (cloud_mask / int(ocean_mask.sum())) < ocean_cloud_threshold
+            data = data.isel(time=(cloud_mask));
 
             # convert bands to actual values
             for band in bands: 
@@ -115,10 +130,15 @@ def main():
             data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
-            data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
+            data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
+            #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
             data["kelp"] = data["kelp"].rio.clip(land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud high probability"], numpy.nan)
+            data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["thin cirrus"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["defective"], numpy.nan)
+            data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cast shadow"], numpy.nan)
+            data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud shadow"], numpy.nan)
+            data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud medium probability"], numpy.nan)
 
             # Save each separately
             for index in range(len(data["kelp"].time)):
