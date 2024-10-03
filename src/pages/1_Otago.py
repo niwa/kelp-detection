@@ -33,12 +33,13 @@ def main():
     
     # Define the region
     data_path = pathlib.Path.cwd() / "data"
+    raster_path = data_path / "rasters" / f"{location}_planetarycomputer"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     #land = streamlit.session_state["land"]
     #data_path = streamlit.session_state["data_path"]
     
     streamlit.subheader("Table and Plot of areas")
-    kelp_info = pandas.read_csv(data_path / "rasters" / location / "info.csv")
+    kelp_info = pandas.read_csv(raster_path / "info.csv")
     col1, col2 = streamlit.columns([1, 7])
     with col1:
         streamlit.dataframe(kelp_info[["date", "area"]])
@@ -50,7 +51,7 @@ def main():
     files = sorted((data_path / "rasters" / location).glob(f"*.tif"))
     dates = [datetime.datetime.strptime(file.stem.strip("kelp_"), date_format) for file in files]
     date = streamlit.select_slider("Select date?", options=dates) #, format="MM/DD/YY",)
-    kelp_file = data_path / "rasters" / location / f"kelp_{date.strftime(date_format)}.tif"
+    kelp_file = raster_path / f"kelp_{date.strftime(date_format)}.tif"
 
     streamlit.subheader("Map View")
     folium_map = folium.Map()
