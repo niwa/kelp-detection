@@ -1,0 +1,23 @@
+
+name: streamlit
+channels:
+  - conda-forge
+dependencies:
+  - pip
+  pip:
+      - geoviews
+      - jupyterlab
+      - rioxarray
+      - geoapis
+      - pystac-client
+      - odc-stac
+      - netcdf4
+      - python-dotenv
+      - streamlit
+      - streamlit-folium 
+      - plotly_express
+      - planetary_computer
+      - dask
+      - distributed
+      - plotly
+      - nbformat
