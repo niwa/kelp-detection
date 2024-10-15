@@ -21,3 +21,4 @@ dependencies:
       - distributed
       - plotly
       - nbformat
+      - hyplot
