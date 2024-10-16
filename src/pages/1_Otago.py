@@ -26,14 +26,14 @@ def main():
     )
     display_size = 700
     date_format = "%Y-%m-%d"
-    location = "waikouaiti"
+    location = "1607" # "waikouaiti"
     
     streamlit.button("Re-run")
     streamlit.title('Otago Kelp')
     
     # Define the region
     data_path = pathlib.Path.cwd() / "data"
-    raster_path = data_path / "rasters" / f"{location}_planetarycomputer"
+    raster_path = data_path / "rasters" / "tiles" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     #land = streamlit.session_state["land"]
     #data_path = streamlit.session_state["data_path"]
@@ -48,7 +48,7 @@ def main():
         streamlit.plotly_chart(plot)
     
     # Select the date to display
-    files = sorted((data_path / "rasters" / location).glob(f"*.tif"))
+    files = sorted(raster_path.glob(f"*.tif"))
     dates = [datetime.datetime.strptime(file.stem.strip("kelp_"), date_format) for file in files]
     date = streamlit.select_slider("Select date?", options=dates) #, format="MM/DD/YY",)
     kelp_file = raster_path / f"kelp_{date.strftime(date_format)}.tif"

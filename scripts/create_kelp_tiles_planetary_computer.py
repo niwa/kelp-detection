@@ -2,9 +2,11 @@ import pystac_client
 import pystac
 import odc.stac
 import rioxarray
+import xarray
 import pathlib
 import pandas
 import geopandas
+import shapely
 import numpy
 import dotenv
 import planetary_computer
@@ -28,6 +30,37 @@ def update_raster_defaults(raster):
         else: # assume float
             raster.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
+def create_tiles(data_path, crs):
+    
+    offshore_by_region = geopandas.read_file(r"https://services1.arcgis.com/3JjYDyG3oajxU6HO/arcgis/rest/services/MARINE_BioGeoRegions/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+    offshore_by_region.to_file(data_path / "vectors" / "offshore_by_region.gpkg")
+    
+    TILE_LENGTH = 50_000
+    offshore_by_region = offshore_by_region.to_crs(2193)
+    bbox = offshore_by_region.total_bounds
+    n_tiles_x = int((bbox[2]-bbox[0]) / TILE_LENGTH + 1)
+    n_tiles_y = int((bbox[3]-bbox[1]) / TILE_LENGTH + 1)
+    origin_x = int((bbox[0] + bbox[2]) / 2) - (n_tiles_x / 2) * TILE_LENGTH
+    origin_y = int((bbox[1] + bbox[3]) / 2) - (n_tiles_y / 2) * TILE_LENGTH
+
+    tiles = {"name": [], "geometry": []}
+    for i in range(n_tiles_y):
+        for j in range(n_tiles_x):
+            name = f"{i:02d}{j:02d}"
+            tiles["name"].append(name)
+            tiles["geometry"].append(
+                shapely.geometry.Polygon(
+                        [
+                            (origin_x + j * TILE_LENGTH, origin_y + i * TILE_LENGTH),
+                            (origin_x + (j + 1) * TILE_LENGTH, origin_y + i * TILE_LENGTH),
+                            (origin_x + (j + 1) * TILE_LENGTH, origin_y + (i + 1) * TILE_LENGTH),
+                            (origin_x + j * TILE_LENGTH, origin_y + (i + 1) * TILE_LENGTH),
+                        ]
+                    ))
+    tiles = geopandas.GeoDataFrame(tiles, crs=crs)
+    tiles = tiles[tiles.intersects(offshore_by_region.dissolve().iloc[0].geometry)]
+    tiles.to_file(data_path / "vectors" / f"tiles.gpkg")
+
 def main():
     """ Create Otago dataset.
     """
@@ -47,7 +80,6 @@ def main():
                 "vegetation": 4, "not vegetated": 5, "water": 6, "unclassified": 7,
                 "cloud medium probability": 8, "cloud high probability": 9,
                 "thin cirrus": 10, "snow": 11}
-    thresholds = {"min_ndvi": 0.01, "max_ndvi": 0.7, "max_ndwi": 0.2, "min_ndvri": 0.05}
     thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
     
     filter_cloud_percentage = 30
@@ -59,18 +91,16 @@ def main():
     (data_path / "vectors").mkdir(parents=True, exist_ok=True)
 
     # Setup vector inputs
-    if not (data_path / "vectors" / "regions.gpkg").exists() or not (data_path / "vectors" / "main_islands.gpkg").exists():
+    if not (data_path / "vectors" / "tiles.gpkg").exists() or not (data_path / "vectors" / "main_islands.gpkg").exists():
         dotenv.load_dotenv()
         linz_key = os.environ.get("LINZ_API", None)
         fetcher = geoapis.vector.Linz(linz_key, verbose=False, crs=crs)
-        regions = fetcher.run(50785)
         islands = fetcher.run(51153)
         
         main_islands = islands[islands.area > 9e8]
-        
-        regions.to_file(data_path / "vectors" / "regions.gpkg")
         main_islands.to_file(data_path / "vectors" / "main_islands.gpkg")
-    tiles = geopandas.read_file(data_path / "vectors" / "tiles.gpkg")
+        
+        create_tiles(data_path=data_path, crs=crs)
 
     # use publically available stac link such as
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
@@ -78,6 +108,7 @@ def main():
     
     # Geometry of AOI - convex hull to allow search
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
+    tiles = geopandas.read_file(data_path / "vectors" / "tiles.gpkg")
     geometry_df = tiles[tiles["name"]=="1607"]
     geometry_query = geometry_df.to_crs(crs_wsg).iloc[0].geometry
 
@@ -100,7 +131,6 @@ def main():
 
             data = odc.stac.load(search.items(), geopolygon=geometry_query, bands=bands,  chunks={}, groupby="solar_day",
                                 resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
-
             # remove if no data
             data["SCL"].load()
             data["SCL"] = data["SCL"].rio.clip(land.to_crs(data["SCL"].rio.crs).geometry.values, invert=True)
@@ -123,23 +153,30 @@ def main():
 
             # Save out RGB
             rgb = data[["red", "green","blue"]].to_array("rgb", name="all images")
-            update_raster_defaults_int(data)
-            rgb.to_netcdf(data_path / "rasters" / name / f'rgb_2_{date_YYMM}.nc', format="NETCDF4", engine="netcdf4")
+            update_raster_defaults(rgb)
+            rgb.to_netcdf(raster_path / f'rgb_2_{month_YYMM}.nc', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 2, "grid_mapping": rgb.encoding["grid_mapping"]}})
+
+            # Convert to floats before calcualtions
+            for key in data.data_vars:
+                if key == "SCL": 
+                    continue
+                data[key] = data[key].astype("float32").where(data[key] != 0, numpy.nan)
+            update_raster_defaults(data)
 
 
             # Calculate NVDI and NVWI
-            data["ndvi"] = (data.nir - data.red)/(data.nir + data.red)
-            data["ndwi"] = (data.green-data.nir)/(data.green+data.nir)
-            data["ndvri"] = (data.B05-data.red)/(data.B05+data.red);
-            data["ndwi2"] = (data.swir16-data.B05)/(data.swir16+data.B05);
+            data["ndvi"] = (data.nir - data.red) / (data.nir + data.red)
+            data["ndwi"] = (data.green - data.nir) / (data.green + data.nir)
+            data["ndvri"] = (data.B05 - data.red) / (data.B05 + data.red);
+            data["ndwi2"] = (data.swir16 + data.B05) / (data.swir16 - data.B05)
             update_raster_defaults(data)
 
             # Calculate Kelp
             data["kelp"] = (data.nir - data.red) / (data.nir + data.red)
             data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
-            data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
+            #data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
             #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
             data["kelp"] = data["kelp"].rio.clip(land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud high probability"], numpy.nan)
@@ -148,6 +185,7 @@ def main():
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cast shadow"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud shadow"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud medium probability"], numpy.nan)
+            update_raster_defaults(data)
 
             # Save each separately
             for index in range(len(data["kelp"].time)):
@@ -158,7 +196,8 @@ def main():
                 kelp_info["file"].append(filename)
                 kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
 
-                kelp.rio.to_raster(filename, compress="deflate", driver="COG")
+                kelp.rio.to_raster(filename, compress="deflate", driver="COG") # missing min and max values when viewed in QGIS
+            pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv")
 
     # Save results
     kelp_info = pandas.DataFrame.from_dict(kelp_info, orient='columns')
