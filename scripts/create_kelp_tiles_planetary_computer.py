@@ -83,7 +83,7 @@ def main():
     thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
     
     filter_cloud_percentage = 30
-    ocean_cloud_percentage = 10
+    max_ocean_cloud_percentage = 10
 
     data_path = pathlib.Path.cwd() / ".." / "data"
     raster_path = data_path / "rasters" / "tiles" / f"{name}"
@@ -109,10 +109,10 @@ def main():
     # Geometry of AOI - convex hull to allow search
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     tiles = geopandas.read_file(data_path / "vectors" / "tiles.gpkg")
-    geometry_df = tiles[tiles["name"]=="1607"]
+    geometry_df = tiles[tiles["name"]==name]
     geometry_query = geometry_df.to_crs(crs_wsg).iloc[0].geometry
 
-    kelp_info = {"date": [], "file": [], "area": []}
+    kelp_info = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
 
     filters = {"eo:cloud_cover":{"lt":filter_cloud_percentage}} 
     years = list(range(2016, 2024))
@@ -143,13 +143,15 @@ def main():
             ocean_mask.data[:] = 1
             ocean_mask = ocean_mask.rio.clip(land.to_crs(ocean_mask.rio.crs).geometry.values, invert=True)
             # Mask by time - initially sums of cloud values then true / false by time if less than cloud threshold
-            cloud_mask = (data["SCL"] == scl_dict["cloud high probability"]).sum(dim=["x", "y"]) 
-            cloud_mask += (data["SCL"] == scl_dict["thin cirrus"]).sum(dim=["x", "y"])
-            cloud_mask += (data["SCL"] == scl_dict["defective"]).sum(dim=["x", "y"])
-            cloud_mask += (data["SCL"] == scl_dict["no data"]).sum(dim=["x", "y"]) - (ocean_mask == scl_dict["no data"]).sum(dim=["x", "y"])
-            print(f"Ocean cloud percentage {list(map('{:.2f}%'.format,(cloud_mask / int(ocean_mask.sum())).data*100))}")
-            cloud_mask_time = (cloud_mask / int(ocean_mask.sum())) < (ocean_cloud_percentage / 100)
-            data = data.isel(time=(cloud_mask_time));
+            ocean_cloud_sum = (data["SCL"] == scl_dict["cloud high probability"]).sum(dim=["x", "y"]) 
+            ocean_cloud_sum += (data["SCL"] == scl_dict["thin cirrus"]).sum(dim=["x", "y"])
+            ocean_cloud_sum += (data["SCL"] == scl_dict["defective"]).sum(dim=["x", "y"])
+            ocean_cloud_sum += (data["SCL"] == scl_dict["no data"]).sum(dim=["x", "y"]) - (ocean_mask == scl_dict["no data"]).sum(dim=["x", "y"])
+            ocean_cloud_percentage = (ocean_cloud_sum / int(ocean_mask.sum())).data*100
+            print(f"Ocean cloud percentage {list(map('{:.2f}%'.format, ocean_cloud_percentage))}")
+            cloud_mask_time = ocean_cloud_percentage < max_ocean_cloud_percentage
+            data = data.isel(time=(cloud_mask_time))
+            ocean_cloud_percentage = ocean_cloud_percentage[cloud_mask_time]
 
             # Save out RGB
             rgb = data[["red", "green","blue"]].to_array("rgb", name="all images")
@@ -195,6 +197,7 @@ def main():
                 kelp_info["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                 kelp_info["file"].append(filename)
                 kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
+                kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
 
                 kelp.rio.to_raster(filename, compress="deflate", driver="COG") # missing min and max values when viewed in QGIS
             pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv")
