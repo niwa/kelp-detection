@@ -86,7 +86,7 @@ def main():
     max_ocean_cloud_percentage = 10
 
     data_path = pathlib.Path.cwd() / ".." / "data"
-    raster_path = data_path / "rasters" / "tiles" / f"{name}"
+    raster_path = data_path / "rasters" / "tiles" / f"{name}_test"
     raster_path.mkdir(parents=True, exist_ok=True)
     (data_path / "vectors").mkdir(parents=True, exist_ok=True)
 
@@ -144,6 +144,9 @@ def main():
             ocean_mask = ocean_mask.rio.clip(land.to_crs(ocean_mask.rio.crs).geometry.values, invert=True)
             # Mask by time - initially sums of cloud values then true / false by time if less than cloud threshold
             ocean_cloud_sum = (data["SCL"] == scl_dict["cloud high probability"]).sum(dim=["x", "y"]) 
+            ocean_cloud_sum += (data["SCL"] == scl_dict["cloud medium probability"]).sum(dim=["x", "y"]) 
+            ocean_cloud_sum += (data["SCL"] == scl_dict["cloud shadow"]).sum(dim=["x", "y"]) 
+            ocean_cloud_sum += (data["SCL"] == scl_dict["cast shadow"]).sum(dim=["x", "y"]) 
             ocean_cloud_sum += (data["SCL"] == scl_dict["thin cirrus"]).sum(dim=["x", "y"])
             ocean_cloud_sum += (data["SCL"] == scl_dict["defective"]).sum(dim=["x", "y"])
             ocean_cloud_sum += (data["SCL"] == scl_dict["no data"]).sum(dim=["x", "y"]) - (ocean_mask == scl_dict["no data"]).sum(dim=["x", "y"])
@@ -152,11 +155,15 @@ def main():
             cloud_mask_time = ocean_cloud_percentage < max_ocean_cloud_percentage
             data = data.isel(time=(cloud_mask_time))
             ocean_cloud_percentage = ocean_cloud_percentage[cloud_mask_time]
+            
+            if len(ocean_cloud_percentage) == 0:
+                print("None with suitable cloud percentage.")
+                continue
 
             # Save out RGB
-            rgb = data[["red", "green","blue"]].to_array("rgb", name="all images")
+            '''rgb = data[["red", "green","blue"]].to_array("rgb", name="all images")
             update_raster_defaults(rgb)
-            rgb.to_netcdf(raster_path / f'rgb_2_{month_YYMM}.nc', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 2, "grid_mapping": rgb.encoding["grid_mapping"]}})
+            rgb.to_netcdf(raster_path / f'rgb_{month_YYMM}.nc', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 2, "grid_mapping": rgb.encoding["grid_mapping"]}})'''
 
             # Convert to floats before calcualtions
             for key in data.data_vars:
@@ -200,6 +207,7 @@ def main():
                 kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
 
                 kelp.rio.to_raster(filename, compress="deflate", driver="COG") # missing min and max values when viewed in QGIS
+                data["SCL"].isel(time=index).rio.to_raster(raster_path / f'scl_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")
             pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv")
 
     # Save results
