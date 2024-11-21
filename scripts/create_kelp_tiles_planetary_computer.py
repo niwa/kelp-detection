@@ -30,14 +30,34 @@ def update_raster_defaults(raster):
         else: # assume float
             raster.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
+def create_south_island_roi(data_path, crs):
+    
+    if not (data_path / "vectors" / "nz_islands.gpkg").exists():
+        dotenv.load_dotenv()
+        linz_key = os.environ.get("LINZ_API", None)
+        fetcher = geoapis.vector.Linz(linz_key, verbose=False, crs=crs)
+        islands = fetcher.run(51153)
+        islands.to_file(data_path / "vectors" / "nz_islands.gpkg")
+    
+    import shapely
+    islands = geopandas.read_file(data_path / "vectors" / "nz_islands.gpkg")
+    south_islands = islands[islands["name"].isin(["South Island or Te Waipounamu", "Stewart Island/Rakiura"])]
+    south_islands = islands[islands.intersects(shapely.geometry.box(*south_islands.total_bounds))]
+    OFFSHORE_BUFFER = 4_000
+    offshore_4km = geopandas.GeoDataFrame(geometry=south_islands.buffer(OFFSHORE_BUFFER), crs=crs).overlay(south_islands, how='difference')
+    offshore_4km = offshore_4km.dissolve()
+    offshore_4km.to_file(data_path / "vectors" / "offshore_4km.gpkg")
+
 def create_tiles(data_path, crs):
     
-    offshore_by_region = geopandas.read_file(r"https://services1.arcgis.com/3JjYDyG3oajxU6HO/arcgis/rest/services/MARINE_BioGeoRegions/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
-    offshore_by_region.to_file(data_path / "vectors" / "offshore_by_region.gpkg")
+    '''offshore_by_region = geopandas.read_file(r"https://services1.arcgis.com/3JjYDyG3oajxU6HO/arcgis/rest/services/MARINE_BioGeoRegions/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+    offshore_by_region = offshore_by_region.to_crs(2193)
+    offshore_by_region.to_file(data_path / "vectors" / "offshore_by_region.gpkg")'''
+    region_of_interest = geopandas.read_file(data_path / "vectors" / "offshore_4km.gpkg")
     
     TILE_LENGTH = 50_000
-    offshore_by_region = offshore_by_region.to_crs(2193)
-    bbox = offshore_by_region.total_bounds
+    region_of_interest = region_of_interest.to_crs(2193)
+    bbox = region_of_interest.total_bounds
     n_tiles_x = int((bbox[2]-bbox[0]) / TILE_LENGTH + 1)
     n_tiles_y = int((bbox[3]-bbox[1]) / TILE_LENGTH + 1)
     origin_x = int((bbox[0] + bbox[2]) / 2) - (n_tiles_x / 2) * TILE_LENGTH
@@ -58,14 +78,19 @@ def create_tiles(data_path, crs):
                         ]
                     ))
     tiles = geopandas.GeoDataFrame(tiles, crs=crs)
-    tiles = tiles[tiles.intersects(offshore_by_region.dissolve().iloc[0].geometry)]
+    tiles = tiles[tiles.intersects(region_of_interest.dissolve().iloc[0].geometry)]
+    tiles.to_file(data_path / "vectors" / f"tiles_full_size.gpkg")
+    
+    tiles = tiles.clip(region_of_interest)
+    tiles["geometry"] = tiles["geometry"].apply(lambda geometry: shapely.geometry.box(*geometry.bounds))
+
     tiles.to_file(data_path / "vectors" / f"tiles.gpkg")
 
 def main():
     """ Create Otago dataset.
     """
     
-    name = "1607"
+    name = "2312" # Akaroa - 2011, Waikouaiti - 1607, Kaikoura 2312
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
                  "collections": ["sentinel-2-l2a"]}
@@ -86,7 +111,7 @@ def main():
     max_ocean_cloud_percentage = 10
 
     data_path = pathlib.Path.cwd() / ".." / "data"
-    raster_path = data_path / "rasters" / "tiles" / f"{name}_test"
+    raster_path = data_path / "rasters" / "tiles" / f"{name}"
     raster_path.mkdir(parents=True, exist_ok=True)
     (data_path / "vectors").mkdir(parents=True, exist_ok=True)
 
@@ -107,6 +132,7 @@ def main():
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
     # Geometry of AOI - convex hull to allow search
+    complete_roi = geopandas.read_file(data_path / "vectors" / "offshore_4km.gpkg")
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     tiles = geopandas.read_file(data_path / "vectors" / "tiles.gpkg")
     geometry_df = tiles[tiles["name"]==name]
