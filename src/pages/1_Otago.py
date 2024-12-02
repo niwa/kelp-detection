@@ -28,14 +28,16 @@ def main():
     )
     display_size = 700
     date_format = "%Y-%m-%d"
-    location = "1607" # "waikouaiti"
     
     streamlit.button("Re-run")
     streamlit.title('Kelp Demo - click area plot to select raster display')
     
+    location = streamlit.selectbox("Select tile to display", ("1607 (Waikouaiti)", "2011 (Akaroa harbour)", "2312 (Kaikoura)"), index=0,)
+    location = location[0:4]
+    
     # Define the region
     data_path = pathlib.Path.cwd() / "data"
-    raster_path = data_path / "rasters" / "tiles" / f"{location}_test"
+    raster_path = data_path / "rasters" / "tiles" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     #land = streamlit.session_state["land"]
     #data_path = streamlit.session_state["data_path"]

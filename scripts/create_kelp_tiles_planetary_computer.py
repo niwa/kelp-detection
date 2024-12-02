@@ -9,6 +9,7 @@ import geopandas
 import shapely
 import numpy
 import dotenv
+import datetime
 import planetary_computer
 import os
 import geoapis.vector
@@ -90,7 +91,7 @@ def main():
     """ Create Otago dataset.
     """
     
-    name = "2312" # Akaroa - 2011, Waikouaiti - 1607, Kaikoura 2312
+    name = "1111" # Akaroa - 0810, Waikouaiti - 0406, Kaikoura 0102, Oban 0102
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
                  "collections": ["sentinel-2-l2a"]}
@@ -138,14 +139,28 @@ def main():
     geometry_df = tiles[tiles["name"]==name]
     geometry_query = geometry_df.to_crs(crs_wsg).iloc[0].geometry
 
-    kelp_info = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
-
     filters = {"eo:cloud_cover":{"lt":filter_cloud_percentage}} 
+    
+    # Start from year of failure if already partial results
+    if (raster_path / "info.csv").exists():
+        kelp_info = pandas.read_csv(raster_path / "info.csv")
+        kelp_info = kelp_info[['date', 'file', 'area', 'ocean cloud percentage']]
+        max_date = datetime.datetime.strptime(kelp_info["date"].max(), '%Y-%m-%d')
+        kelp_info = kelp_info.to_dict(orient='list')
+    else:
+        kelp_info = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
+        max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
+    
     years = list(range(2016, 2024))
     for year in years:
         months = [f"{year}-{str(month).zfill(2)}" for month in list(range(1, 13))]
 
         for month_YYMM in months:
+            
+            if max_date > datetime.datetime.strptime(month_YYMM, '%Y-%m'):
+                print(f"Skipping {month_YYMM} as run previously. Delete if you want a rerun")
+                continue
+
             print(f"Check month: {month_YYMM}")
             # run pystac client search to see available dataset
             search = client.search(
