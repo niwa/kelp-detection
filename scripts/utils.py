@@ -4,6 +4,8 @@ import geoapis.vector
 import shapely
 import pathlib
 import geopandas
+import xarray
+import numpy
 
 CRS = 2193
 CRS_WSG = 4326
@@ -164,4 +166,56 @@ def create_test_sites(distance_offshore = 4_000):
         test_sites = geopandas.read_file(test_sites_path)
 
     return test_sites
+
+
+def update_raster_defaults(raster):
+    # works on DataArrays and Datasets and for ints and floats
+    if isinstance(raster, xarray.Dataset):
+        for key in raster.data_vars:
+            raster[key].rio.write_crs(raster[key].rio.crs, inplace=True)
+            if raster[key].data.dtype == 'uint16':
+                raster[key].rio.write_nodata(0, encoded=True, inplace=True)
+            else: # assume float
+                raster[key].rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+    raster.rio.write_crs(raster.rio.crs, inplace=True)
+    if isinstance(raster, xarray.DataArray):
+        if raster.data.dtype == 'uint16':
+            raster.rio.write_nodata(0, encoded=True, inplace=True)
+        else: # assume float
+            raster.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+
+
+def screen_by_SCL_in_ROI(data, roi):
+    data["SCL"].load()
+    if not roi.geometry.intersects(shapely.box(*data.rio.bounds())):
+        print(f"\t\tWanring no intersection with ROI. Skipping.")
+        return data
+    data["SCL"] = data["SCL"].rio.clip([roi.geometry])
+    data["SCL"].rio.write_crs(data["SCL"].rio.crs, inplace=True);
+    data = data.isel(time=(data["SCL"] != scl_dict["no data"]).any(dim=["x", "y"]))
+
+    if len(data.time) == 0:
+        return data # Nothing meeting criteria for this month
+
+    # remove if much cloud over ocean
+    # Mask with 1s on ocean, 0 elsewhere
+    ocean_mask = data["SCL"].isel(time=0).copy(deep=True)
+    ocean_mask.data[:] = 1
+    #ocean_mask = ocean_mask.rio.clip(land.to_crs(ocean_mask.rio.crs).geometry.values, invert=True)
+    ocean_mask = ocean_mask.rio.clip([roi.geometry])
+    # Mask by time - initially sums of cloud values then true / false by time if less than cloud threshold
+    ocean_cloud_sum = (data["SCL"] == scl_dict["cloud high probability"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == scl_dict["cloud medium probability"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == scl_dict["cloud shadow"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == scl_dict["cast shadow"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == scl_dict["thin cirrus"]).sum(dim=["x", "y"])
+    ocean_cloud_sum += (data["SCL"] == scl_dict["defective"]).sum(dim=["x", "y"])
+    ocean_cloud_sum += (data["SCL"] == scl_dict["no data"]).sum(dim=["x", "y"]) - (ocean_mask == scl_dict["no data"]).sum(dim=["x", "y"])
+    ocean_cloud_percentage = (ocean_cloud_sum / int(ocean_mask.sum())).data*100
+    print(f"\t\tOcean cloud percentage {list(map('{:.2f}%'.format, ocean_cloud_percentage))}")
+    cloud_mask_time = ocean_cloud_percentage < max_ocean_cloud_percentage
+    data = data.isel(time=(cloud_mask_time))
+    ocean_cloud_percentage = ocean_cloud_percentage[cloud_mask_time]
+    
+    return data
 

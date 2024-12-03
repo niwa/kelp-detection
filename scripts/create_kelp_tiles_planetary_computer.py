@@ -15,21 +15,7 @@ import os
 import geoapis.vector
 
 
-def update_raster_defaults(raster):
-    # works on DataArrays and Datasets and for ints and floats
-    if isinstance(raster, xarray.Dataset):
-        for key in raster.data_vars:
-            raster[key].rio.write_crs(raster[key].rio.crs, inplace=True)
-            if raster[key].data.dtype == 'uint16':
-                raster[key].rio.write_nodata(0, encoded=True, inplace=True)
-            else: # assume float
-                raster[key].rio.write_nodata(numpy.nan, encoded=True, inplace=True)
-    raster.rio.write_crs(raster.rio.crs, inplace=True)
-    if isinstance(raster, xarray.DataArray):
-        if raster.data.dtype == 'uint16':
-            raster.rio.write_nodata(0, encoded=True, inplace=True)
-        else: # assume float
-            raster.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+
 
 def create_south_island_roi(data_path, crs):
     
@@ -203,7 +189,7 @@ def main():
 
             # Save out RGB
             '''rgb = data[["red", "green","blue"]].to_array("rgb", name="all images")
-            update_raster_defaults(rgb)
+            utils.update_raster_defaults(rgb)
             rgb.to_netcdf(raster_path / f'rgb_{month_YYMM}.nc', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 2, "grid_mapping": rgb.encoding["grid_mapping"]}})'''
 
             # Convert to floats before calcualtions
@@ -211,7 +197,7 @@ def main():
                 if key == "SCL": 
                     continue
                 data[key] = data[key].astype("float32").where(data[key] != 0, numpy.nan)
-            update_raster_defaults(data)
+            utils.update_raster_defaults(data)
 
 
             # Calculate NVDI and NVWI
@@ -219,7 +205,7 @@ def main():
             data["ndwi"] = (data.green - data.nir) / (data.green + data.nir)
             data["ndvri"] = (data.B05 - data.red) / (data.B05 + data.red);
             data["ndwi2"] = (data.swir16 + data.B05) / (data.swir16 - data.B05)
-            update_raster_defaults(data)
+            utils.update_raster_defaults(data)
 
             # Calculate Kelp
             data["kelp"] = (data.nir - data.red) / (data.nir + data.red)
@@ -235,7 +221,7 @@ def main():
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cast shadow"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud shadow"], numpy.nan)
             data["kelp"] = data["kelp"].where(data["SCL"] != scl_dict["cloud medium probability"], numpy.nan)
-            update_raster_defaults(data)
+            utils.update_raster_defaults(data)
 
             # Save each separately
             for index in range(len(data["kelp"].time)):
