@@ -3,10 +3,13 @@ import os
 import geoapis.vector
 import shapely
 import pathlib
+import pandas
 import geopandas
 import xarray
 import numpy
 import odc.stac
+import seaborn
+import matplotlib.pyplot
 import planetary_computer
 import rasterio.features
 
@@ -343,3 +346,26 @@ def kelp_single_day(client, date_YYMM, roi):
 
     return data
 
+def plot_hists_single_day(data, date_YYMM, ocean_buffered, output_path):
+    mask = data["kelp"].notnull()
+    kelp_df = {}
+    for key, value in SENTINEL_2B_BAND_INFO.items():
+        kelp_df[f"{key}: {value['name']}"] = data[key].data[mask]
+    kelp_df = pandas.DataFrame(data=kelp_df)
+    kelp_df["classification"] = "kelp"
+    
+    mask = xarray.ones_like(data["kelp"])
+    mask = mask.rio.clip(ocean_buffered.geometry, drop=False, invert=False).notnull()
+    ocean_df = {}
+    for key, value in SENTINEL_2B_BAND_INFO.items():
+        ocean_df[f"{key}: {value['name']}"] = data[key].data[mask]
+    ocean_df = pandas.DataFrame(data=ocean_df)
+    ocean_df["classification"] = "ocean"
+    plotting_df = pandas.concat([kelp_df, ocean_df]).melt(var_name='column', value_name='data', id_vars='classification')
+    
+    fig = seaborn.displot(data=kelp_df.melt(var_name='column', value_name='data', id_vars='classification'), x="data", col="column", col_wrap=4, stat='percent', bins=60, binrange=(100, 2400))
+    fig.savefig(output_path / f'{date_YYMM}_kelp_hists.png')
+    matplotlib.pyplot.close()
+    fig = seaborn.displot(data=ocean_df.melt(var_name='column', value_name='data', id_vars='classification'), x="data", col="column", col_wrap=4, stat='percent', bins=60, binrange=(100, 2400))
+    fig.savefig(output_path / f'{date_YYMM}_ocean_hists.png')
+    matplotlib.pyplot.close()
