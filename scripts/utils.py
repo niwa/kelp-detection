@@ -11,6 +11,30 @@ CRS = 2193
 CRS_WSG = 4326
 DATA_PATH = pathlib.Path.cwd() / ".." / "data"
 
+SCL_DICT = {"no data": 0, "defective": 1, "cast shadow": 2, "cloud shadow": 3,
+                "vegetation": 4, "not vegetated": 5, "water": 6, "unclassified": 7,
+                "cloud medium probability": 8, "cloud high probability": 9,
+                "thin cirrus": 10, "snow": 11}
+
+# source: https://sentiwiki.copernicus.eu/web/s2-mission#S2Mission-SpectralResolutionS2-Mission-Spectral-Resolution
+SENTINEL_2B_BAND_INFO = {
+    "B01": {"name": "coastal", "wavelength": 442.7, "bandwidth": 20},
+    "B02": {"name": "blue", "wavelength": 492.7, "bandwidth": 65},
+    "B03": {"name": "green", "wavelength": 559.8, "bandwidth": 35},
+    "B04": {"name": "red", "wavelength": 664.6, "bandwidth": 30},
+    "B05": {"name": "rededge - Band 5 - Vegetation red edge 1", "wavelength": 704.1, "bandwidth": 14},
+    "B06": {"name": "rededge - Band 6 - Vegetation red edge 2", "wavelength": 740.5, "bandwidth": 14},
+    "B07": {"name": "rededge - Band 7 - Vegetation red edge 3", "wavelength": 782.8, "bandwidth": 19},
+    "B08": {"name": "nir", "wavelength": 832.8, "bandwidth": 105},
+    "B09": {"name": "water vapor", "wavelength": 945.1, "bandwidth": 19},
+    "B010": {"name": "", "wavelength": 1373.5, "bandwidth": 29},
+    "B011": {"name": "swir16", "wavelength": 1613.7, "bandwidth": 90},
+    "B012": {"name": "swir22", "wavelength": 2202.4, "bandwidth": 174},
+    "B08a": {"name": "rededge - Band 8A - Vegetation red edge 4", "wavelength": 864.7, "bandwidth": 21}
+}
+
+
+
 def download_nz_outline():
     dotenv.load_dotenv()
     if not (DATA_PATH / "vectors" / "nz_islands.gpkg").exists():
@@ -185,14 +209,14 @@ def update_raster_defaults(raster):
             raster.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
 
 
-def screen_by_SCL_in_ROI(data, roi):
+def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     data["SCL"].load()
     if not roi.geometry.intersects(shapely.box(*data.rio.bounds())):
         print(f"\t\tWanring no intersection with ROI. Skipping.")
         return data
     data["SCL"] = data["SCL"].rio.clip([roi.geometry])
     data["SCL"].rio.write_crs(data["SCL"].rio.crs, inplace=True);
-    data = data.isel(time=(data["SCL"] != scl_dict["no data"]).any(dim=["x", "y"]))
+    data = data.isel(time=(data["SCL"] != SCL_DICT["no data"]).any(dim=["x", "y"]))
 
     if len(data.time) == 0:
         return data # Nothing meeting criteria for this month
@@ -204,18 +228,18 @@ def screen_by_SCL_in_ROI(data, roi):
     #ocean_mask = ocean_mask.rio.clip(land.to_crs(ocean_mask.rio.crs).geometry.values, invert=True)
     ocean_mask = ocean_mask.rio.clip([roi.geometry])
     # Mask by time - initially sums of cloud values then true / false by time if less than cloud threshold
-    ocean_cloud_sum = (data["SCL"] == scl_dict["cloud high probability"]).sum(dim=["x", "y"]) 
-    ocean_cloud_sum += (data["SCL"] == scl_dict["cloud medium probability"]).sum(dim=["x", "y"]) 
-    ocean_cloud_sum += (data["SCL"] == scl_dict["cloud shadow"]).sum(dim=["x", "y"]) 
-    ocean_cloud_sum += (data["SCL"] == scl_dict["cast shadow"]).sum(dim=["x", "y"]) 
-    ocean_cloud_sum += (data["SCL"] == scl_dict["thin cirrus"]).sum(dim=["x", "y"])
-    ocean_cloud_sum += (data["SCL"] == scl_dict["defective"]).sum(dim=["x", "y"])
-    ocean_cloud_sum += (data["SCL"] == scl_dict["no data"]).sum(dim=["x", "y"]) - (ocean_mask == scl_dict["no data"]).sum(dim=["x", "y"])
+    ocean_cloud_sum = (data["SCL"] == SCL_DICT["cloud high probability"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == SCL_DICT["cloud medium probability"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == SCL_DICT["cloud shadow"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == SCL_DICT["cast shadow"]).sum(dim=["x", "y"]) 
+    ocean_cloud_sum += (data["SCL"] == SCL_DICT["thin cirrus"]).sum(dim=["x", "y"])
+    ocean_cloud_sum += (data["SCL"] == SCL_DICT["defective"]).sum(dim=["x", "y"])
+    ocean_cloud_sum += (data["SCL"] == SCL_DICT["no data"]).sum(dim=["x", "y"]) - (ocean_mask == SCL_DICT["no data"]).sum(dim=["x", "y"])
     ocean_cloud_percentage = (ocean_cloud_sum / int(ocean_mask.sum())).data*100
     print(f"\t\tOcean cloud percentage {list(map('{:.2f}%'.format, ocean_cloud_percentage))}")
     cloud_mask_time = ocean_cloud_percentage < max_ocean_cloud_percentage
     data = data.isel(time=(cloud_mask_time))
     ocean_cloud_percentage = ocean_cloud_percentage[cloud_mask_time]
     
-    return data
+    return (data, ocean_cloud_percentage)
 
