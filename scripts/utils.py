@@ -6,15 +6,24 @@ import pathlib
 import geopandas
 import xarray
 import numpy
+import odc.stac
+import planetary_computer
+import rasterio.features
 
 CRS = 2193
 CRS_WSG = 4326
 DATA_PATH = pathlib.Path.cwd() / ".." / "data"
+DATE_FORMAT = "%Y-%m-%d"
+
+FILTER_CLOUD_PERCENTAGE = 30
+MAX_OCEAN_CLOUD_PERCENTAGE = 10
 
 SCL_DICT = {"no data": 0, "defective": 1, "cast shadow": 2, "cloud shadow": 3,
                 "vegetation": 4, "not vegetated": 5, "water": 6, "unclassified": 7,
                 "cloud medium probability": 8, "cloud high probability": 9,
                 "thin cirrus": 10, "snow": 11}
+
+RASTER_DEFAULTS = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
 
 # source: https://sentiwiki.copernicus.eu/web/s2-mission#S2Mission-SpectralResolutionS2-Mission-Spectral-Resolution
 SENTINEL_2B_BAND_INFO = {
@@ -27,12 +36,40 @@ SENTINEL_2B_BAND_INFO = {
     "B07": {"name": "rededge - Band 7 - Vegetation red edge 3", "wavelength": 782.8, "bandwidth": 19},
     "B08": {"name": "nir", "wavelength": 832.8, "bandwidth": 105},
     "B09": {"name": "water vapor", "wavelength": 945.1, "bandwidth": 19},
-    "B010": {"name": "", "wavelength": 1373.5, "bandwidth": 29},
-    "B011": {"name": "swir16", "wavelength": 1613.7, "bandwidth": 90},
-    "B012": {"name": "swir22", "wavelength": 2202.4, "bandwidth": 174},
-    "B08a": {"name": "rededge - Band 8A - Vegetation red edge 4", "wavelength": 864.7, "bandwidth": 21}
+    #"B10": {"name": "", "wavelength": 1373.5, "bandwidth": 29},
+    "B11": {"name": "swir16", "wavelength": 1613.7, "bandwidth": 90},
+    "B12": {"name": "swir22", "wavelength": 2202.4, "bandwidth": 174},
+    "B8A": {"name": "rededge - Band 8A - Vegetation red edge 4", "wavelength": 864.7, "bandwidth": 21}
 }
 
+
+CATALOGUE = {"planetarycomputer": {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
+                                   "collections": {"sentinel": "sentinel-2-l2a", "dem": "cop-dem-glo-30"}}}
+
+def get_band_names_from_common(common_names): 
+    band_names = []
+    for common_name in common_names:
+        found = False
+        for key, value in SENTINEL_2B_BAND_INFO.items():
+            #print(f"key {key}, value {value['name']}")
+            if value["name"] == common_name:
+                band_names.append(key)
+                found=True
+                break
+        if not found:
+            print(f"Warning - no band name found for common name '{common_name}'")
+    return band_names
+
+def get_band_name_from_common(common_name): 
+    band_name = None
+    for key, value in SENTINEL_2B_BAND_INFO.items():
+        #print(f"key {key}, value {value['name']}")
+        if value["name"] == common_name:
+            band_name = key
+            break
+    if band_name is None:
+        print(f"Warning - no band name found for common name '{common_name}'")
+    return band_name
 
 
 def download_nz_outline():
@@ -242,4 +279,67 @@ def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     ocean_cloud_percentage = ocean_cloud_percentage[cloud_mask_time]
     
     return (data, ocean_cloud_percentage)
+
+def polygon_from_raster(data: xarray.DataArray):
+    data.load()
+    polygons = numpy.array([[value, shapely.geometry.shape(polygon)] for polygon, value in rasterio.features.shapes(numpy.uint8(data.notnull().values)) if value != 0])
+    polygons = geopandas.GeoDataFrame({'value': polygons[:, 0], 'geometry': polygons[:, 1]}, crs=data.rio.crs)
+    transform = data.rio.transform()
+    polygons["geometry"] = polygons.affine_transform([transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff, ]).buffer(0)
+
+    return polygons
+    
+
+def threshold_kelp(data, thresholds, roi):
+    data["ndvi"] = (data[get_band_name_from_common("nir")] - data[get_band_name_from_common("red")]) / (data[get_band_name_from_common("nir")] + data[get_band_name_from_common("red")])
+    data["ndwi"] = (data[get_band_name_from_common("green")] - data[get_band_name_from_common("nir")]) / (data[get_band_name_from_common("green")] + data[get_band_name_from_common("nir")])
+    data["ndvri"] = (data["B05"] - data[get_band_name_from_common("red")]) / (data["B05"] + data[get_band_name_from_common("red")]);
+    data["ndwi2"] = (data[get_band_name_from_common("swir16")] + data["B05"]) / (data[get_band_name_from_common("swir16")] - data["B05"])
+    update_raster_defaults(data)
+
+    # Calculate Kelp
+    data["kelp"] = (data[get_band_name_from_common("nir")] - data[get_band_name_from_common("red")]) / (data[get_band_name_from_common("nir")] + data[get_band_name_from_common("red")])
+    data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
+    #data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
+    #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
+    data["kelp"] = data["kelp"].rio.clip([roi.geometry]) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
+    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud high probability"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["thin cirrus"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["defective"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cast shadow"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud shadow"], numpy.nan)
+    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud medium probability"], numpy.nan)
+    update_raster_defaults(data)
+    
+    return data
+
+def kelp_single_day(client, date_YYMM, roi):
+
+    bbox = roi.to_crs(CRS_WSG).iloc[0].geometry.bounds
+    
+    filters = {"eo:cloud_cover":{"lt": FILTER_CLOUD_PERCENTAGE}}
+    bands = list(SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"] # Band 05 - Vegetation red edge 1, Band 8A - Vegetation red edge 4
+
+    # Get data
+    search_sentinel = client.search(collections=[CATALOGUE["planetarycomputer"]["collections"]["sentinel"]], bbox=bbox, datetime=date_YYMM, query=filters)
+    data = odc.stac.load(search_sentinel.items(), bbox=bbox, bands=bands, chunks={}, groupby="solar_day",
+                         resolution=RASTER_DEFAULTS["resolution"], dtype=RASTER_DEFAULTS["dtype"], nodata=RASTER_DEFAULTS["nodata"],
+                         patch_url=planetary_computer.sign)
+
+    # Keep only low cloud events
+    roi = roi.to_crs(data["SCL"].rio.crs).iloc[0]
+    (data, ocean_cloud_percentage) = screen_by_SCL_in_ROI(data, roi, MAX_OCEAN_CLOUD_PERCENTAGE)
+
+    for key in data.data_vars:
+        if key == "SCL": 
+            continue
+        data[key] = data[key].astype("float32").where(data[key] != 0, numpy.nan)
+
+    # Kelp from thresholds
+    thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
+    data = threshold_kelp(data, thresholds, roi)
+
+    return data
 
