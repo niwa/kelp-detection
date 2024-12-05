@@ -12,8 +12,14 @@ import rioxarray
 import odc.stac
 import branca
 import plotly.express
-import holoviews
-import hvplot.xarray
+#import holoviews
+#import hvplot.xarray
+
+module_path = pathlib.Path.cwd() / 'scripts'
+import sys
+if str(module_path) not in sys.path:
+    sys.path.append(str(module_path))
+import utils
 
 
 
@@ -57,27 +63,31 @@ def main():
     selection = event["selection"]["point_indices"]
     
     if len(selection):
-        kelp_file = pathlib.Path(kelp_info["file"].iloc[selection[0]])
+        data_file = pathlib.Path(kelp_info["file"].iloc[selection[0]])
         streamlit.subheader(f"Plot {kelp_info["date"].iloc[selection[0]]} with {kelp_info["ocean cloud percentage"].iloc[selection[0]]:.2f}% ocean cloud")
         streamlit.caption("May take time to load...")
         
+        data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze( "band", drop=True)
 
         col1, col2 = streamlit.columns([1, 1])
         with col1:
-            kelp_display = rioxarray.rioxarray.open_rasterio(kelp_file, chunks=True).squeeze( "band", drop=True)
 
             folium_map = folium.Map()
             land.explore(m=folium_map)
             # In future consider https://geoviews.org or saving as a png and loading...
-            kelp_display.odc.add_to(folium_map, opacity=0.75, cmap="inferno", vmin=0, vmax=1) # viridis
-            folium_map.fit_bounds(kelp_display.odc.map_bounds())
+            data.odc.to_rgba(bands=utils.get_band_names_from_common(["red", "green", "blue"]), vmin=0, vmax=1000).odc.add_to(map=folium_map, name="Satellite RBG")
+            data["kelp"].odc.add_to(map=folium_map, name="Kelp", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
+            #data[].odc.add_to(folium_map, opacity=0.75, cmap="inferno", vmin=0, vmax=1) # viridis
+            folium_map.fit_bounds(data["kelp"].odc.map_bounds())
 
             colormap = branca.colormap.linear.inferno.scale(0, 1)
             colormap.caption = 'Kelp Index'
             colormap.add_to(folium_map)
+            folium.LayerControl().add_to(folium_map)
+            
             st_data =  streamlit_folium.st_folium(folium_map, width=900)  
         with col2:
-            scl_file = kelp_file.parent / kelp_file.name.replace('kelp', 'scl')
+            '''scl_file = kelp_file.parent / kelp_file.name.replace('kelp', 'scl')
             scl_display = rioxarray.rioxarray.open_rasterio(scl_file, chunks=True).squeeze( "band", drop=True)
 
             folium_map = folium.Map()
@@ -89,7 +99,7 @@ def main():
             colormap = branca.colormap.linear.viridis.scale(0, 11)
             colormap.caption = 'SCL Classification'
             colormap.add_to(folium_map)
-            st_data =  streamlit_folium.st_folium(folium_map, width=900)  
+            st_data =  streamlit_folium.st_folium(folium_map, width=900)'''
 
         '''streamlit.subheader("hvplot Map View")
         hv_plot = kelp_display.hvplot.image(x='x', y='y', data_aspect=1, flip_yaxis=True, subplots=True, coastline="10m")

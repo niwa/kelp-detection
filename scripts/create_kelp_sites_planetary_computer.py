@@ -28,7 +28,7 @@ def main():
 
     date_format = "%Y-%m-%d"
 
-    bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
+    bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
     thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
     
@@ -104,43 +104,26 @@ def main():
                     data[key] = data[key].astype("float32").where(data[key] != 0, numpy.nan)
                 utils.update_raster_defaults(data)
 
-
-                # Calculate NVDI and NVWI
-                data["ndvi"] = (data.nir - data.red) / (data.nir + data.red)
-                data["ndwi"] = (data.green - data.nir) / (data.green + data.nir)
-                data["ndvri"] = (data.B05 - data.red) / (data.B05 + data.red);
-                data["ndwi2"] = (data.swir16 + data.B05) / (data.swir16 - data.B05)
-                utils.update_raster_defaults(data)
-
-                # Calculate Kelp
-                data["kelp"] = (data.nir - data.red) / (data.nir + data.red)
-                data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
-                #data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
-                #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
-                data["kelp"] = data["kelp"].rio.clip([roi.geometry]) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
-                data["kelp"] = data["kelp"].where(data["SCL"] != utils.SCL_DICT["cloud high probability"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["SCL"] != utils.SCL_DICT["thin cirrus"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["SCL"] != utils.SCL_DICT["defective"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["SCL"] != utils.SCL_DICT["cast shadow"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["SCL"] != utils.SCL_DICT["cloud shadow"], numpy.nan)
-                data["kelp"] = data["kelp"].where(data["SCL"] != utils.SCL_DICT["cloud medium probability"], numpy.nan)
-                utils.update_raster_defaults(data)
+                # Calculate Kelp from thresholds
+                data = utils.threshold_kelp(data, thresholds, roi)
 
                 # Save each separately
                 for index in range(len(data["kelp"].time)):
                     kelp = data["kelp"].isel(time=index).load()
                     #kelp = kelp.rio.clip(roi.geometry.values)
-                    filename = raster_path / f'kelp_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif'
+                    filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
 
                     kelp_info["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                     kelp_info["file"].append(filename)
                     kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
                     kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
-                    kelp.rio.to_raster(filename, compress="deflate", driver="COG")  # missing min and max values when viewed in QGIS
+                    kelp.rio.to_raster(raster_path / f'kelp_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")  # missing min and max values when viewed in QGIS
                     
-                    data["SCL"].isel(time=index).rio.to_raster(raster_path / f'scl_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")
+                    #data["SCL"].isel(time=index).rio.to_raster(raster_path / f'scl_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")
+                    encoding = {}
+                    for key in data.data_vars:
+                        encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
+                    data.isel(time=index).to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv")
 
         # Save results
