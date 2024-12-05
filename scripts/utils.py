@@ -192,7 +192,7 @@ def create_test_sites(distance_offshore = 4_000):
         # Akaroa
         y0 = 5140000; x0 = 1592000
         y1 = 5156000; x1 = 1598000
-        matau = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+        akaroa = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
         # Matau
         y0 = 5230000; x0 = 1604000
@@ -209,7 +209,7 @@ def create_test_sites(distance_offshore = 4_000):
         y1 = 5100000; x1 = 2470000
         chatham = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        test_sites = geopandas.GeoDataFrame({"name": ["rakiora", "waikouaiti", "matau", "wellington", "chatham"], "geometry": [rakiora, waikouaiti, matau, wellington, chatham]}, crs=CRS)
+        test_sites = geopandas.GeoDataFrame({"name": ["rakiora", "waikouaiti", "akaroa", "matau", "wellington", "chatham"], "geometry": [rakiora, waikouaiti, akaroa, matau, wellington, chatham]}, crs=CRS)
 
         # clip to max distance offshore
         buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
@@ -318,7 +318,7 @@ def threshold_kelp(data, thresholds, roi):
     
     return data
 
-def kelp_single_day(client, date_YYMM, roi):
+def kelp_single_day(client, date_YYMM, roi, thresholds):
 
     bbox = roi.to_crs(CRS_WSG).iloc[0].geometry.bounds
     
@@ -341,7 +341,6 @@ def kelp_single_day(client, date_YYMM, roi):
         data[key] = data[key].astype("float32").where(data[key] != 0, numpy.nan)
 
     # Kelp from thresholds
-    thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
     data = threshold_kelp(data, thresholds, roi)
 
     return data
