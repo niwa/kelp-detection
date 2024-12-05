@@ -20,3 +20,4 @@ dependencies:
     - planetary_computer
     - streamlit-folium 
     - plotly_express
+    - sesaborn
