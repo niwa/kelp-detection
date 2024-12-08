@@ -371,7 +371,7 @@ def plot_hists_single_day(data, date_YYMM, ocean_buffered, output_path):
 
 def plot_lines(xys, data):
     point_df = {"name": [], "wavelength": [], "bandwidth": [], "value": [], "xy": []}
-    for xy in xys:
+    for index, xy in enumerate(xys):
         point = data.sel(x=xy[0],y=xy[1], method="nearest")
     
         for key, value in SENTINEL_2B_BAND_INFO.items():
@@ -379,6 +379,9 @@ def plot_lines(xys, data):
             point_df["wavelength"].append(value["wavelength"])
             point_df["bandwidth"].append(value["bandwidth"])
             point_df["value"].append(float(point[key]))
-            point_df["xy"].append(f"{xy[0]:.2f}, {xy[1]:.2f}")
+            point_df["xy"].append(f"Click {index}: {xy[0]:.2f}, {xy[1]:.2f}")
     point_df = pandas.DataFrame(data=point_df)
-    return point_df
+    plot = seaborn.lineplot(data=point_df.pivot(index="wavelength", columns="xy", values="value"), markers=True)
+    plot.set(title="Spectral Exploration")
+    plot.set(ylabel='Reflectance')
+    return plot

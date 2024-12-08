@@ -53,6 +53,7 @@ def main():
     
     if 'xy' not in streamlit.session_state:
         streamlit.session_state['xy'] = []
+        streamlit.session_state['prev_lat'], streamlit.session_state['prev_lon'] = numpy.nan, numpy.nan
     
     streamlit.subheader("Table and Plot of areas")
     kelp_info = pandas.read_csv(raster_path / "info.csv")
@@ -102,12 +103,13 @@ def main():
         with col2:
             
             if st_map['last_clicked'] is not None:
-                x, y =  transformer.transform(st_map['last_clicked']['lat'], st_map['last_clicked']['lng'])
-                streamlit.write(x, y)
-                
-                streamlit.session_state['xy'].append([x,y])
-                point_df = utils.plot_lines(streamlit.session_state['xy'], data)
-                streamlit.dataframe(point_df)
+                lat, lon = st_map['last_clicked']['lat'], st_map['last_clicked']['lng']
+                if streamlit.session_state['prev_lat'] != lat or streamlit.session_state['prev_lon'] != lon:
+                    streamlit.session_state['prev_lat'], streamlit.session_state['prev_lon'] = lat, lon
+                    x, y =  transformer.transform(lat, lon)
+                    streamlit.session_state['xy'].append([x,y])
+                    plot = utils.plot_lines(streamlit.session_state['xy'], data)
+                    streamlit.pyplot(plot.get_figure())
 
 
 if __name__ == '__main__':
