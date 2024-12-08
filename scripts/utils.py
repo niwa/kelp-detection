@@ -368,3 +368,17 @@ def plot_hists_single_day(data, date_YYMM, ocean_buffered, output_path):
     fig = seaborn.displot(data=ocean_df.melt(var_name='column', value_name='data', id_vars='classification'), x="data", col="column", col_wrap=4, stat='percent', bins=60, binrange=(100, 2400))
     fig.savefig(output_path / f'{date_YYMM}_ocean_hists.png')
     matplotlib.pyplot.close()
+
+def plot_lines(xys, data):
+    point_df = {"name": [], "wavelength": [], "bandwidth": [], "value": [], "xy": []}
+    for xy in xys:
+        point = data.sel(x=xy[0],y=xy[1], method="nearest")
+    
+        for key, value in SENTINEL_2B_BAND_INFO.items():
+            point_df["name"].append(key)
+            point_df["wavelength"].append(value["wavelength"])
+            point_df["bandwidth"].append(value["bandwidth"])
+            point_df["value"].append(float(point[key]))
+            point_df["xy"].append(f"{xy[0]:.2f}, {xy[1]:.2f}")
+    point_df = pandas.DataFrame(data=point_df)
+    return point_df

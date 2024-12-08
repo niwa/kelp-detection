@@ -12,6 +12,9 @@ import rioxarray
 import odc.stac
 import branca
 import plotly.express
+import pyproj
+
+
 #import holoviews
 #import hvplot.xarray
 
@@ -20,7 +23,8 @@ import sys
 if str(module_path) not in sys.path:
     sys.path.append(str(module_path))
 import utils
-
+import importlib
+importlib.reload(utils)
 
 
 def main():
@@ -44,11 +48,11 @@ def main():
     location = streamlit.selectbox("Select tile to display", (test_sites["name"]), index=0,)
     
     # Define the region
-    
     raster_path = data_path / "rasters" / "test_sites" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
-    #land = streamlit.session_state["land"]
-    #data_path = streamlit.session_state["data_path"]
+    
+    if 'xy' not in streamlit.session_state:
+        streamlit.session_state['xy'] = []
     
     streamlit.subheader("Table and Plot of areas")
     kelp_info = pandas.read_csv(raster_path / "info.csv")
@@ -68,42 +72,42 @@ def main():
         streamlit.caption("May take time to load...")
         
         data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze( "band", drop=True)
+        transformer = pyproj.Transformer.from_crs(utils.CRS_WSG, data.rio.crs)
 
         col1, col2 = streamlit.columns([1, 1])
         with col1:
 
             folium_map = folium.Map()
-            land.explore(m=folium_map)
+            land.explore(m=folium_map, name="land")
             # In future consider https://geoviews.org or saving as a png and loading...
             data.odc.to_rgba(bands=utils.get_band_names_from_common(["red", "green", "blue"]), vmin=0, vmax=1000).odc.add_to(map=folium_map, name="Satellite RBG")
+            data.odc.to_rgba(bands=utils.get_band_names_from_common(["nir", "green", "blue"]), vmin=0, vmax=1000).odc.add_to(map=folium_map, name="Satellite nir BG")
             data["kelp"].odc.add_to(map=folium_map, name="Kelp", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
-            #data[].odc.add_to(folium_map, opacity=0.75, cmap="inferno", vmin=0, vmax=1) # viridis
-            folium_map.fit_bounds(data["kelp"].odc.map_bounds())
-
             colormap = branca.colormap.linear.inferno.scale(0, 1)
             colormap.caption = 'Kelp Index'
             colormap.add_to(folium_map)
-            folium.LayerControl().add_to(folium_map)
             
-            st_data =  streamlit_folium.st_folium(folium_map, width=900)  
-        with col2:
-            '''scl_file = kelp_file.parent / kelp_file.name.replace('kelp', 'scl')
-            scl_display = rioxarray.rioxarray.open_rasterio(scl_file, chunks=True).squeeze( "band", drop=True)
-
-            folium_map = folium.Map()
-            land.explore(m=folium_map, style_kwds=dict(color="red", fill=False))
-            # In future consider https://geoviews.org or saving as a png and loading...
-            scl_display.odc.add_to(folium_map, opacity=0.75, vmin=0, vmax=11) # viridis
-            folium_map.fit_bounds(scl_display.odc.map_bounds())
-
+            data["SCL"].odc.add_to(map=folium_map, name="SCL", opacity=0.75, cmap="viridis", vmin=0, vmax=11)
             colormap = branca.colormap.linear.viridis.scale(0, 11)
-            colormap.caption = 'SCL Classification'
+            colormap.caption = 'SCL Index'
             colormap.add_to(folium_map)
-            st_data =  streamlit_folium.st_folium(folium_map, width=900)'''
-
-        '''streamlit.subheader("hvplot Map View")
-        hv_plot = kelp_display.hvplot.image(x='x', y='y', data_aspect=1, flip_yaxis=True, subplots=True, coastline="10m")
-        streamlit.bokeh_chart(holoviews.render(hv_plot, backend='bokeh'))'''
+            
+            folium_map.fit_bounds(data["kelp"].odc.map_bounds())
+            
+            # create callback
+            folium_map.add_child(folium.LatLngPopup())
+    
+            folium.LayerControl().add_to(folium_map)
+            st_map =  streamlit_folium.st_folium(folium_map, width=900) 
+        with col2:
+            
+            if st_map['last_clicked'] is not None:
+                x, y =  transformer.transform(st_map['last_clicked']['lat'], st_map['last_clicked']['lng'])
+                streamlit.write(x, y)
+                
+                streamlit.session_state['xy'].append([x,y])
+                point_df = utils.plot_lines(streamlit.session_state['xy'], data)
+                streamlit.dataframe(point_df)
 
 
 if __name__ == '__main__':
