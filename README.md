@@ -1,3 +1,11 @@
+# Instructions for fresh environment setup
+* Clone our repository: git clone git@github.com:niwa/kelp-detection.git
+* Create an .env file (contains LINZ LDS keys) and put into the root directory of the 'kelp-detection' repository
+* Create the conda environment from environment.yml in the repository root
+* Launch jupyter lab from the repositoriy root directory in the kelp conda environment
+* Open the notebooks/compare_test_sites.ipynb and run
+
+
 # Kelp Dashboard Demo
 
 A demo dashboard for displaying Kelp extents across dates for MPI.
@@ -31,14 +39,3 @@ source $(conda info --base)/etc/profile.d/conda.sh
 conda activate /nesi/project/niwa03440/conda/envs/streamlit
 set -u
 ```
-
-
-
-### Notes for dash URL access - not relevent
-This will display a URL. (e.g. Dash is running on http://127.0.0.1:8050/)
-
-If accessing NeSI via SSH/MobaXTerm access from https://localhost:8050
-
-If accessing NeSI via jupyter lab (https://jupyter.maui.niwa.co.nz/user/pearsonra) access from https://jupyter.maui.niwa.co.nz/user/pearsonra/proxy/8050
-
-More details at the NeSI [port-forwarding documentation](https://support.nesi.org.nz/hc/en-gb/articles/360001523916-Port-Forwarding).
