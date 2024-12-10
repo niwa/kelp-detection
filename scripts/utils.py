@@ -83,7 +83,7 @@ def download_nz_outline():
         fetcher = geoapis.vector.Linz(linz_key, verbose=False, crs=CRS)
         islands = fetcher.run(51153)
         islands.to_file(DATA_PATH / "vectors" / "nz_islands.gpkg")
-    if not (DATA_PATH / "vectors" / "main_islands.gpkg"):
+    if not (DATA_PATH / "vectors" / "main_islands.gpkg").exists():
         big_islands = islands[islands.area > 1e8]
         main_islands = islands[islands.area > 9e8]
         main_islands.to_file(DATA_PATH / "vectors" / "main_islands.gpkg")
