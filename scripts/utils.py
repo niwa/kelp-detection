@@ -77,6 +77,7 @@ def get_band_name_from_common(common_name):
 
 def download_nz_outline():
     dotenv.load_dotenv()
+    (DATA_PATH / "vectors").mkdir(parents=True, exist_ok=True)
     if not (DATA_PATH / "vectors" / "nz_islands.gpkg").exists():
         linz_key = os.environ.get("LINZ_API", None)
         fetcher = geoapis.vector.Linz(linz_key, verbose=False, crs=CRS)
