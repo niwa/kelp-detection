@@ -1,7 +1,7 @@
 # Instructions for fresh environment setup
 * Clone our repository: git clone git@github.com:niwa/kelp-detection.git
 * Create an .env file (contains LINZ LDS keys) and put into the root directory of the 'kelp-detection' repository
-* Create the conda environment from environment.yml in the repository root
+* Create the conda environment from environment.yml in the repository root - `conda env create -f environment.yml`
 * Launch jupyter lab from the repositoriy root directory in the kelp conda environment
 * Open the notebooks/compare_test_sites.ipynb and run
 
