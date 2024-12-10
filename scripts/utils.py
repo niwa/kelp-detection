@@ -385,3 +385,10 @@ def plot_lines(xys, data):
     plot.set(title="Spectral Exploration")
     plot.set(ylabel='Reflectance')
     return plot
+
+def normalise_rgb(data, bands):
+    rgb = data[bands].copy(deep=True)
+    max_val = min([rgb[band].max() for band in bands])
+    for key in rgb.data_vars:
+        rgb[key] = rgb[key] / max_val
+    return rgb

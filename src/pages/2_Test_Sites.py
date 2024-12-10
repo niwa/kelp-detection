@@ -55,6 +55,13 @@ def main():
         streamlit.session_state['xy'] = []
         streamlit.session_state['prev_lat'], streamlit.session_state['prev_lon'] = numpy.nan, numpy.nan
     
+    rgb_dict = {
+        "Satellite RBG": ["red", "green", "blue"],
+        "False NIR color": ["nir", "green", "blue"],
+        "False rededge-2 colour": ["rededge - Band 6 - Vegetation red edge 2", "green", "blue"],
+        "False rededge-3 colour": ["rededge - Band 7 - Vegetation red edge 3", "green", "blue"]
+    }
+    
     streamlit.subheader("Table and Plot of areas")
     kelp_info = pandas.read_csv(raster_path / "info.csv")
     col1, col2 = streamlit.columns([1, 5])
@@ -81,12 +88,20 @@ def main():
             folium_map = folium.Map()
             land.explore(m=folium_map, name="land")
             # In future consider https://geoviews.org or saving as a png and loading...
-            data.odc.to_rgba(bands=utils.get_band_names_from_common(["red", "green", "blue"]), vmin=0, vmax=1000).odc.add_to(map=folium_map, name="Satellite RBG")
-            data.odc.to_rgba(bands=utils.get_band_names_from_common(["nir", "green", "blue"]), vmin=0, vmax=1000).odc.add_to(map=folium_map, name="Satellite nir BG")
+            for title, names in rgb_dict.items():
+                bands = utils.get_band_names_from_common(names)
+                rgb = utils.normalise_rgb(data, bands)
+                rgb.odc.to_rgba(bands=bands, vmin=0, vmax=1).odc.add_to(map=folium_map, name=title)
+
             data["kelp"].odc.add_to(map=folium_map, name="Kelp", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
             colormap = branca.colormap.linear.inferno.scale(0, 1)
             colormap.caption = 'Kelp Index'
             colormap.add_to(folium_map)
+            
+            data["ndvi"].odc.add_to(map=folium_map, name="ndvi", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
+            data["ndwi"].odc.add_to(map=folium_map, name="ndwi", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
+            data["ndvri"].odc.add_to(map=folium_map, name="ndvri", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
+            data["ndwi2"].odc.add_to(map=folium_map, name="ndwi2", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
             
             data["SCL"].odc.add_to(map=folium_map, name="SCL", opacity=0.75, cmap="viridis", vmin=0, vmax=11)
             colormap = branca.colormap.linear.viridis.scale(0, 11)

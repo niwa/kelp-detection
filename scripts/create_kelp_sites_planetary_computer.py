@@ -117,7 +117,7 @@ def main():
                     kelp_info["file"].append(filename)
                     kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
                     kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
-                    kelp.rio.to_raster(raster_path / f'kelp_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")  # missing min and max values when viewed in QGIS
+                    #kelp.rio.to_raster(raster_path / f'kelp_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")  # missing min and max values when viewed in QGIS
                     
                     #data["SCL"].isel(time=index).rio.to_raster(raster_path / f'scl_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")
                     encoding = {}
