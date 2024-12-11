@@ -54,6 +54,7 @@ def main():
     if 'xy' not in streamlit.session_state:
         streamlit.session_state['xy'] = []
         streamlit.session_state['prev_lat'], streamlit.session_state['prev_lon'] = numpy.nan, numpy.nan
+        streamlit.session_state['spectra'] = None
     
     rgb_dict = {
         "Satellite RBG": ["red", "green", "blue"],
@@ -125,6 +126,13 @@ def main():
                     streamlit.session_state['xy'].append([x,y])
                     plot = utils.plot_lines(streamlit.session_state['xy'], data)
                     streamlit.pyplot(plot.get_figure())
+                    streamlit.session_state['spectra'] = utils.update_spectra([x,y], data, streamlit.session_state['spectra'])
+                
+                streamlit.download_button(label="Export specrta",
+                                          data=pandas.DataFrame(data=streamlit.session_state['spectra']).to_csv().encode("utf-8"),
+                                          file_name=f"spectra_from_dashboard_{location}.csv",
+                                          mime="text/csv",
+                                         )
 
 
 if __name__ == '__main__':

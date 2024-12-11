@@ -388,6 +388,19 @@ def plot_lines(xys, data):
     plot.set(ylabel='Reflectance')
     return plot
 
+def update_spectra(xy, data, spectra_dict):
+    if spectra_dict is None:
+        spectra_dict = {"band": ["description", "wavelength", "bandwidth"], **{key: [SENTINEL_2B_BAND_INFO[key]["name"], SENTINEL_2B_BAND_INFO[key]["wavelength"], SENTINEL_2B_BAND_INFO[key]["bandwidth"]] for key in SENTINEL_2B_BAND_INFO.keys()}}
+    
+    point = data.sel(x=xy[0],y=xy[1], method="nearest")
+    
+    spectra_dict["band"].append(f"Click {len(spectra_dict["band"])-3}: {xy[0]:.2f}, {xy[1]:.2f}")
+    for key, value in SENTINEL_2B_BAND_INFO.items():
+        spectra_dict[key].append(float(point[key]))
+    return spectra_dict
+            
+    
+
 def normalise_rgb(data, bands):
     rgb = data[bands].copy(deep=True)
     max_val = min([rgb[band].max() for band in bands])
