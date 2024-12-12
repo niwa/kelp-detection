@@ -128,10 +128,20 @@ def main():
                     streamlit.pyplot(plot.get_figure())
                     streamlit.session_state['spectra'] = utils.update_spectra([x,y], data, streamlit.session_state['spectra'])
                 
-                streamlit.download_button(label="Export specrta",
+                streamlit.download_button(label="Export specrta from clicks",
                                           data=pandas.DataFrame(data=streamlit.session_state['spectra']).to_csv().encode("utf-8"),
                                           file_name=f"spectra_from_dashboard_{location}.csv",
                                           mime="text/csv",
+                                         )
+                
+                if streamlit.button('Prepare specrta all dates last click'):
+                    streamlit.session_state['prev_lat'], streamlit.session_state['prev_lon'] = lat, lon
+                    x, y =  transformer.transform(lat, lon)
+                    spectra_all_dates = utils.get_spectra_all_dates([x, y], kelp_info)
+                    streamlit.download_button(label="Export specrta all dates last click",
+                                              data=pandas.DataFrame(data=spectra_all_dates).to_csv().encode("utf-8"),
+                                              file_name=f"spectra_all_dates_from_dashboard_{location}.csv",
+                                              mime="text/csv",
                                          )
 
 

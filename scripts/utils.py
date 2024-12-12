@@ -6,6 +6,7 @@ import pathlib
 import pandas
 import geopandas
 import xarray
+import rioxarray
 import numpy
 import odc.stac
 import seaborn
@@ -399,7 +400,22 @@ def update_spectra(xy, data, spectra_dict):
         spectra_dict[key].append(float(point[key]))
     return spectra_dict
             
+def get_spectra_all_dates(xy, kelp_info):
     
+    data = rioxarray.rioxarray.open_rasterio(kelp_info.iloc[0]["file"], chunks=True).squeeze( "band", drop=True)
+    
+    indices = [key for key in data.data_vars if key not in SENTINEL_2B_BAND_INFO.keys()]
+    
+    spectra_dict = {"band": ["description", "wavelength", "bandwidth"], **{key: [SENTINEL_2B_BAND_INFO[key]["name"], SENTINEL_2B_BAND_INFO[key]["wavelength"], SENTINEL_2B_BAND_INFO[key]["bandwidth"]] for key in SENTINEL_2B_BAND_INFO.keys()}, **{key: ["", "", ""] for key in indices}}
+    
+    for index, row in kelp_info.iterrows():
+        data = rioxarray.rioxarray.open_rasterio(row["file"], chunks=True).squeeze( "band", drop=True)
+        point = data.sel(x=xy[0],y=xy[1], method="nearest")
+    
+        spectra_dict["band"].append(row["date"])
+        for key in data.data_vars:
+            spectra_dict[key].append(float(point[key]))
+    return spectra_dict   
 
 def normalise_rgb(data, bands):
     rgb = data[bands].copy(deep=True)
