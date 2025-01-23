@@ -300,6 +300,7 @@ def threshold_kelp(data, thresholds, roi):
     data["ndwi"] = (data[get_band_name_from_common("green")] - data[get_band_name_from_common("nir")]) / (data[get_band_name_from_common("green")] + data[get_band_name_from_common("nir")])
     data["ndvri"] = (data["B05"] - data[get_band_name_from_common("red")]) / (data["B05"] + data[get_band_name_from_common("red")]);
     data["ndwi2"] = (data[get_band_name_from_common("swir16")] + data["B05"]) / (data[get_band_name_from_common("swir16")] - data["B05"])
+    '''data["ndwi3"] = (data[get_band_name_from_common("swir16")] + data["B05"]) / (data[get_band_name_from_common("swir16")] - data["B05"])'''
     update_raster_defaults(data)
 
     # Calculate Kelp
@@ -307,6 +308,7 @@ def threshold_kelp(data, thresholds, roi):
     data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
+    '''data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)'''
     #data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
     #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
     data["kelp"] = data["kelp"].rio.clip([roi.geometry]) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
