@@ -64,7 +64,7 @@ def get_band_names_from_common(common_names):
             print(f"Warning - no band name found for common name '{common_name}'")
     return band_names
 
-def get_band_name_from_common(common_name): 
+def common_name_to_band(common_name): 
     band_name = None
     for key, value in SENTINEL_2B_BAND_INFO.items():
         #print(f"key {key}, value {value['name']}")
@@ -273,8 +273,8 @@ def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     # Mask by time - initially sums of cloud values then true / false by time if less than cloud threshold
     ocean_cloud_sum = (data["SCL"] == SCL_DICT["cloud high probability"]).sum(dim=["x", "y"]) 
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["cloud medium probability"]).sum(dim=["x", "y"]) 
-    ocean_cloud_sum += (data["SCL"] == SCL_DICT["cloud shadow"]).sum(dim=["x", "y"]) 
-    ocean_cloud_sum += (data["SCL"] == SCL_DICT["cast shadow"]).sum(dim=["x", "y"]) 
+    #ocean_cloud_sum += (data["SCL"] == SCL_DICT["cloud shadow"]).sum(dim=["x", "y"]) 
+    #ocean_cloud_sum += (data["SCL"] == SCL_DICT["cast shadow"]).sum(dim=["x", "y"]) 
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["thin cirrus"]).sum(dim=["x", "y"])
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["defective"]).sum(dim=["x", "y"])
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["no data"]).sum(dim=["x", "y"]) - (ocean_mask == SCL_DICT["no data"]).sum(dim=["x", "y"])
@@ -297,15 +297,16 @@ def polygon_from_raster(data: xarray.DataArray):
     
 
 def threshold_kelp(data, thresholds, roi):
-    data["ndvi"] = (data[get_band_name_from_common("nir")] - data[get_band_name_from_common("red")]) / (data[get_band_name_from_common("nir")] + data[get_band_name_from_common("red")])
-    data["ndwi"] = (data[get_band_name_from_common("green")] - data[get_band_name_from_common("nir")]) / (data[get_band_name_from_common("green")] + data[get_band_name_from_common("nir")])
-    data["ndvri"] = (data["B05"] - data[get_band_name_from_common("red")]) / (data["B05"] + data[get_band_name_from_common("red")]);
-    data["ndwi2"] = (data[get_band_name_from_common("swir16")] + data["B05"]) / (data[get_band_name_from_common("swir16")] - data["B05"])
-    '''data["ndwi3"] = (data[get_band_name_from_common("swir16")] + data["B05"]) / (data[get_band_name_from_common("swir16")] - data["B05"])'''
+    data["ndvi"] = (data[common_name_to_band("nir")] - data[common_name_to_band("red")]) / (data[common_name_to_band("nir")] + data[common_name_to_band("red")])
+    data["ndvri"] = (data["B05"] - data[common_name_to_band("red")]) / (data["B05"] + data[common_name_to_band("red")])
+    data["ndwi"] = (data[common_name_to_band("green")] - data[common_name_to_band("nir")]) / (data[common_name_to_band("green")] + data[common_name_to_band("nir")])
+    data["ndwi2"] = (data[common_name_to_band("swir16")] + data["B05"]) / (data[common_name_to_band("swir16")] - data["B05"])
+    data["ndwi3"] = (data[common_name_to_band("blue")] + data[common_name_to_band("coastal")]) / (data[common_name_to_band("blue")] - data[common_name_to_band("coastal")])
+    data["ndwi4"] = (data[common_name_to_band("water vapor")] - data[common_name_to_band("nir")]) / (data[common_name_to_band("water vapor")] + data[common_name_to_band("nir")])
     update_raster_defaults(data)
 
     # Calculate Kelp
-    data["kelp"] = (data[get_band_name_from_common("nir")] - data[get_band_name_from_common("red")]) / (data[get_band_name_from_common("nir")] + data[get_band_name_from_common("red")])
+    data["kelp"] = (data[common_name_to_band("nir")] - data[common_name_to_band("red")]) / (data[common_name_to_band("nir")] + data[common_name_to_band("red")])
     data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
@@ -316,8 +317,8 @@ def threshold_kelp(data, thresholds, roi):
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud high probability"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["thin cirrus"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["defective"], numpy.nan)
-    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cast shadow"], numpy.nan)
-    data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud shadow"], numpy.nan)
+    #data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cast shadow"], numpy.nan)
+    #data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud shadow"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud medium probability"], numpy.nan)
     update_raster_defaults(data)
     

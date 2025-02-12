@@ -33,7 +33,7 @@ def main():
     thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
     
     filter_cloud_percentage = 30
-    max_ocean_cloud_percentage = 10
+    max_ocean_cloud_percentage = 5
 
     # use publically available stac link such as
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
@@ -62,7 +62,7 @@ def main():
             kelp_info = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
 
-        years = list(range(2016, 2025))
+        years = list(range(2016, 2025)) # 2016, 2025
         for year in years:
             months = [f"{year}-{str(month).zfill(2)}" for month in list(range(1, 13))]
 
