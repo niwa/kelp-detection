@@ -77,20 +77,9 @@ def main():
         data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze("band", drop=True)
         transformer = pyproj.Transformer.from_crs(utils.CRS_WSG, data.rio.crs)
         
-        '''zip_file = zipfile.ZipFile(data_file.parent / f"{data_file.stem}.zip", "w", zipfile.ZIP_DEFLATED)
-        zip_file.write(data_file, arcname=data_file)
-        zip_file.close()
-        print("write out a zip file")
-        
-        with open(data_file.parent / f"{data_file.stem}.zip", "rb") as zip_file:
-            streamlit.download_button(label="Download satellite layers",
-                                      data=zip_file, file_name=f"satellite_{location}_{kelp_info["date"].iloc[selection[0]]}.zip",
-                                      mime="application/zip",
-                                             )'''
-        with open(r"/home/pearsonra/repos/kelp-detection/data/rasters/test_sites/rakiora/test.nc", "rb") as binary_file:
+        with open(data_file, "rb") as binary_file:
             streamlit.download_button(label="Download satellite layers",
                                       data=binary_file, file_name=f"satellite_{location}_{kelp_info["date"].iloc[selection[0]]}.nc",
-                                      #mime="application/zip",
                                              )
 
         col1, col2 = streamlit.columns([2, 1])
