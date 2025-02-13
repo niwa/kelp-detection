@@ -38,17 +38,7 @@ def main():
      # Dashboard
     streamlit.title("Kelp Dashboard")
     
-    region = streamlit.selectbox("Select Region?", region_names, index=3)
-        
-    streamlit.subheader("Maps - Regions")
-    streamlit.caption("A caption")
-    folium_map = regions.explore(column="name")#, cmap=pages.scripts.colourmaps.get_colourmap(regions, "name", region))
-    folium_map.fit_bounds(geopandas_bounds_to_plot(regions))
-    st_data =  streamlit_folium.st_folium(folium_map, width=900)  
-
-    streamlit.subheader("Tables - Overall Status of Each Stage")
-    streamlit.caption("Example of different regions - could give a summary statistic")
-    streamlit.dataframe(regions[["name", "id"]])
-
+    streamlit.subheader("Pelase select one of the tabs. See the left hand (cick the `>` if not visible. 'Test Sites' is currently most in use.")
+    
 if __name__ == '__main__':
     main()

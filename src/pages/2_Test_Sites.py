@@ -13,6 +13,7 @@ import odc.stac
 import branca
 import plotly.express
 import pyproj
+import zipfile
 
 
 #import holoviews
@@ -56,13 +57,6 @@ def main():
         streamlit.session_state['prev_lat'], streamlit.session_state['prev_lon'] = numpy.nan, numpy.nan
         streamlit.session_state['spectra'] = None
     
-    rgb_dict = {
-        "Satellite RBG": ["red", "green", "blue"],
-        "False NIR color": ["nir", "green", "blue"],
-        "False rededge-2 colour": ["rededge - Band 6 - Vegetation red edge 2", "green", "blue"],
-        "False rededge-3 colour": ["rededge - Band 7 - Vegetation red edge 3", "green", "blue"]
-    }
-    
     streamlit.subheader("Table and Plot of areas")
     kelp_info = pandas.read_csv(raster_path / "info.csv")
     col1, col2 = streamlit.columns([1, 5])
@@ -80,36 +74,64 @@ def main():
         streamlit.subheader(f"Plot {kelp_info["date"].iloc[selection[0]]} with {kelp_info["ocean cloud percentage"].iloc[selection[0]]:.2f}% ocean cloud")
         streamlit.caption("May take time to load...")
         
-        data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze( "band", drop=True)
+        data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze("band", drop=True)
         transformer = pyproj.Transformer.from_crs(utils.CRS_WSG, data.rio.crs)
+        
+        '''zip_file = zipfile.ZipFile(data_file.parent / f"{data_file.stem}.zip", "w", zipfile.ZIP_DEFLATED)
+        zip_file.write(data_file, arcname=data_file)
+        zip_file.close()
+        print("write out a zip file")
+        
+        with open(data_file.parent / f"{data_file.stem}.zip", "rb") as zip_file:
+            streamlit.download_button(label="Download satellite layers",
+                                      data=zip_file, file_name=f"satellite_{location}_{kelp_info["date"].iloc[selection[0]]}.zip",
+                                      mime="application/zip",
+                                             )'''
+        with open(r"/home/pearsonra/repos/kelp-detection/data/rasters/test_sites/rakiora/test.nc", "rb") as binary_file:
+            streamlit.download_button(label="Download satellite layers",
+                                      data=binary_file, file_name=f"satellite_{location}_{kelp_info["date"].iloc[selection[0]]}.nc",
+                                      #mime="application/zip",
+                                             )
 
-        col1, col2 = streamlit.columns([1, 1])
+        col1, col2 = streamlit.columns([2, 1])
         with col1:
 
             folium_map = folium.Map()
-            land.explore(m=folium_map, name="land")
-            # In future consider https://geoviews.org or saving as a png and loading...
-            for title, names in rgb_dict.items():
-                bands = utils.get_band_names_from_common(names)
-                rgb = utils.normalise_rgb(data, bands)
-                rgb.odc.to_rgba(bands=bands, vmin=0, vmax=1).odc.add_to(map=folium_map, name=title)
-
-            data["kelp"].odc.add_to(map=folium_map, name="Kelp", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
-            colormap = branca.colormap.linear.inferno.scale(0, 1)
-            colormap.caption = 'Kelp Index'
-            colormap.add_to(folium_map)
             
-            data["ndvi"].odc.add_to(map=folium_map, name="ndvi", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
-            data["ndwi"].odc.add_to(map=folium_map, name="ndwi", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
-            data["ndvri"].odc.add_to(map=folium_map, name="ndvri", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
-            data["ndwi2"].odc.add_to(map=folium_map, name="ndwi2", opacity=0.75, cmap="inferno", vmin=0, vmax=1)
-            
-            data["SCL"].odc.add_to(map=folium_map, name="SCL", opacity=0.75, cmap="viridis", vmin=0, vmax=11)
+            data["SCL"].odc.add_to(map=folium_map, name="SCL", opacity=1, cmap="viridis", vmin=0, vmax=11)
             colormap = branca.colormap.linear.viridis.scale(0, 11)
             colormap.caption = 'SCL Index'
             colormap.add_to(folium_map)
             
+            data["ndvi"].odc.add_to(map=folium_map, name="ndvi", opacity=1, cmap="inferno", vmin=0, vmax=1)
+            data["ndvri"].odc.add_to(map=folium_map, name="ndvri", opacity=1, cmap="inferno", vmin=0, vmax=1)
+            data["ndwi"].odc.add_to(map=folium_map, name="ndwi", opacity=1, cmap="inferno", vmin=0, vmax=1)
+            data["ndwi2"].odc.add_to(map=folium_map, name="ndwi2", opacity=1, cmap="inferno", vmin=0, vmax=1)
+            data["ndwi3"].odc.add_to(map=folium_map, name="ndwi3", opacity=1, cmap="inferno", vmin=0, vmax=1)
+            data["ndwi4"].odc.add_to(map=folium_map, name="ndwi4", opacity=1, cmap="inferno", vmin=0, vmax=1)
+
+            data["kelp"].odc.add_to(map=folium_map, name="Kelp", opacity=1, cmap="inferno", vmin=0, vmax=1)
+            colormap = branca.colormap.linear.inferno.scale(0, 1)
+            colormap.caption = 'Kelp Index'
+            colormap.add_to(folium_map)
+            
+            # In future consider https://geoviews.org or saving as a png and loading...
+            rgb_dict = {
+                #"False NIR color": ["nir", "green", "blue"],
+                #"False rededge-2 colour": ["rededge - Band 6 - Vegetation red edge 2", "green", "blue"],
+                #"False rededge-3 colour": ["rededge - Band 7 - Vegetation red edge 3", "green", "blue"],
+                "Satellite RBG": ["red", "green", "blue"]
+            }
+            for title, names in rgb_dict.items():
+                bands = utils.get_band_names_from_common(names)
+                rgb = utils.normalise_rgb(data, bands)
+                rgb.odc.to_rgba(bands=bands, vmin=0, vmax=.7).odc.add_to(map=folium_map, name=title)
+            
             folium_map.fit_bounds(data["kelp"].odc.map_bounds())
+            
+            land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
+            kelp_polygons = utils.polygon_from_raster(data["kelp"])
+            kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="kelp polygon")
             
             # create callback
             folium_map.add_child(folium.LatLngPopup())
