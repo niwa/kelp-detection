@@ -81,6 +81,14 @@ def main():
             streamlit.download_button(label="Download satellite layers",
                                       data=binary_file, file_name=f"satellite_{location}_{kelp_info["date"].iloc[selection[0]]}.nc",
                                              )
+        if not (data_file.parent / f'rgb_{data_file.name}').exists():
+            rgb = data[["B04", "B03","B02"]].to_array("rgb", name="all images")
+            utils.update_raster_defaults(rgb)
+            rgb.to_netcdf(data_file.parent / f'rgb_{data_file.name}', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 5, "grid_mapping": rgb.encoding["grid_mapping"]}})
+        with open(data_file.parent / f'rgb_{data_file.name}', "rb") as binary_file:
+            streamlit.download_button(label="Download rgb layers",
+                                      data=binary_file, file_name=f"satellite_rgb_{location}_{kelp_info["date"].iloc[selection[0]]}.nc",
+                                             )
 
         col1, col2 = streamlit.columns([2, 1])
         with col1:

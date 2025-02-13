@@ -398,7 +398,7 @@ def update_spectra(xy, data, spectra_dict):
     
     point = data.sel(x=xy[0],y=xy[1], method="nearest")
     
-    spectra_dict["band"].append(f"Click {len(spectra_dict["band"])-3}: {xy[0]:.2f}, {xy[1]:.2f}")
+    spectra_dict["band"].append(f"Click {len(spectra_dict['band'])-3}: {xy[0]:.2f}, {xy[1]:.2f}")
     for key, value in SENTINEL_2B_BAND_INFO.items():
         spectra_dict[key].append(float(point[key]))
     return spectra_dict
