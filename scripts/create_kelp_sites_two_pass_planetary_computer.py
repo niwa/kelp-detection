@@ -30,7 +30,8 @@ def main():
 
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
-    thresholds = {"min_ndvi": 0.213, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
+    first_thresholds = {"min_ndvi": 0.213, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
+    second_thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
@@ -39,8 +40,7 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
-    for site_index, row in test_sites_wsg.iterrows():
-
+    for site_index, row in test_sites_wsg[test_sites_wsg["name"]=="matau"].iterrows():
         site_name = row['name']
         
         print(f"Test site: {site_name}") 
@@ -69,7 +69,6 @@ def main():
             months = [f"{year}-{str(month).zfill(2)}" for month in list(range(1, 13))]
 
             for month_YYMM in months:
-
                 if max_date > datetime.datetime.strptime(month_YYMM, '%Y-%m'):
                     print(f"\tSkipping {month_YYMM} as run previously. Delete if you want a rerun")
                     continue
@@ -85,7 +84,7 @@ def main():
 
                 data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
-                roi = test_sites.to_crs(data["SCL"].rio.crs).loc[site_index]
+                roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
 
                 # remove if no data
                 (data, ocean_cloud_percentage) = utils.screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage)
@@ -93,11 +92,6 @@ def main():
                 if len(data.time) == 0:
                     print("\t\tNone with suitable cloud percentage.")
                     continue
-
-                # Save out RGB
-                '''rgb = data[["red", "green","blue"]].to_array("rgb", name="all images")
-                utils.update_raster_defaults(rgb)
-                rgb.rio.clip.to_netcdf(raster_path / f'rgb_{month_YYMM}.nc', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 5, "grid_mapping": rgb.encoding["grid_mapping"]}})'''
 
                 # Convert to floats before calcualtions
                 for key in data.data_vars:
@@ -107,25 +101,44 @@ def main():
                 utils.update_raster_defaults(data)
 
                 # Calculate Kelp from thresholds
-                data = utils.threshold_kelp(data, thresholds, roi)
+                data = utils.threshold_kelp(data, first_thresholds, roi)
+                
+                # Create buffered area around kelp beds
+                buffer = 10; min_pixels = 0
+                kelp_polygons_buffered = []
+                for index in range(len(data["kelp"].time)):
+                    kelp_polygons_i = utils.polygon_from_raster(data["kelp"].isel(time=index))
+                    kelp_polygons_i = kelp_polygons_i[kelp_polygons_i.area>min_pixels * utils.RASTER_DEFAULTS["resolution"] * utils.RASTER_DEFAULTS["resolution"]]
+                    kelp_polygons_i = kelp_polygons_i.buffer(utils.RASTER_DEFAULTS["resolution"] * buffer)
+                    kelp_polygons_i = geopandas.GeoDataFrame(geometry=[kelp_polygons_i.union_all()], crs=kelp_polygons_i.crs)
+                    kelp_polygons_i = kelp_polygons_i.overlay(roi, how="intersection", keep_geom_type=True)
+                    kelp_polygons_buffered.append(kelp_polygons_i)
+                
+                # Caclulate Kelp from second thresholds - reset data first
+                data = utils.threshold_kelp(data, second_thresholds, roi)
 
                 # Save each separately
                 for index in range(len(data["kelp"].time)):
-                    kelp = data["kelp"].isel(time=index).load()
-                    #kelp = kelp.rio.clip(roi.geometry.values)
+                    
                     filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                    
+                    # Clip each kelp date to the buffered search area
+                    data_i = data.isel(time=index)
+                    if kelp_polygons_buffered[index].area.sum() > 0:
+                        data_i["kelp"] = data["kelp"].isel(time=index).rio.clip(kelp_polygons_buffered[index].geometry)
+                    else:
+                        data_i["kelp"].data[:] = numpy.nan
 
+                    kelp = data_i["kelp"].load()
                     kelp_info["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                     kelp_info["file"].append(filename)
                     kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
                     kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
-                    #kelp.rio.to_raster(raster_path / f'kelp_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")  # missing min and max values when viewed in QGIS
-                    
-                    #data["SCL"].isel(time=index).rio.to_raster(raster_path / f'scl_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")
+
                     encoding = {}
                     for key in data.data_vars:
                         encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
-                    data.isel(time=index).to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
+                    data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
 
         # Save results

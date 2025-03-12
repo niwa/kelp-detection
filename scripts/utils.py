@@ -202,6 +202,11 @@ def create_test_sites(distance_offshore = 4_000):
         y1 = 5234000; x1 = 1609000
         matau = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
+        # Marlborogh
+        y0 = 5415458; x0 = 1660774
+        y1 = 5502358; x1 = 1725491
+        marlborough = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+        
         # Wellington
         y0 = 5419000; x0 = 1753000
         y1 = 5426000; x1 = 1759000
@@ -212,7 +217,7 @@ def create_test_sites(distance_offshore = 4_000):
         y1 = 5100000; x1 = 2470000
         chatham = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        test_sites = geopandas.GeoDataFrame({"name": ["rakiora", "waikouaiti", "akaroa", "matau", "wellington", "chatham"], "geometry": [rakiora, waikouaiti, akaroa, matau, wellington, chatham]}, crs=CRS)
+        test_sites = geopandas.GeoDataFrame({"name": ["rakiora", "waikouaiti", "akaroa", "matau", "marlborough","wellington", "chatham"], "geometry": [rakiora, waikouaiti, akaroa, matau, marlborough, wellington, chatham]}, crs=CRS)
 
         # clip to max distance offshore
         buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
@@ -254,10 +259,10 @@ def update_raster_defaults(raster):
 
 def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     data["SCL"].load()
-    if not roi.geometry.intersects(shapely.box(*data.rio.bounds())):
+    if not roi.geometry.intersects(shapely.box(*data.rio.bounds())).any():
         print(f"\t\tWanring no intersection with ROI. Skipping.")
         return data
-    data["SCL"] = data["SCL"].rio.clip([roi.geometry])
+    data["SCL"] = data["SCL"].rio.clip(roi.geometry)
     data["SCL"].rio.write_crs(data["SCL"].rio.crs, inplace=True);
     data = data.isel(time=(data["SCL"] != SCL_DICT["no data"]).any(dim=["x", "y"]))
 
@@ -269,7 +274,7 @@ def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     ocean_mask = data["SCL"].isel(time=0).copy(deep=True)
     ocean_mask.data[:] = 1
     #ocean_mask = ocean_mask.rio.clip(land.to_crs(ocean_mask.rio.crs).geometry.values, invert=True)
-    ocean_mask = ocean_mask.rio.clip([roi.geometry])
+    ocean_mask = ocean_mask.rio.clip(roi.geometry)
     # Mask by time - initially sums of cloud values then true / false by time if less than cloud threshold
     ocean_cloud_sum = (data["SCL"] == SCL_DICT["cloud high probability"]).sum(dim=["x", "y"]) 
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["cloud medium probability"]).sum(dim=["x", "y"]) 
@@ -289,9 +294,12 @@ def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
 def polygon_from_raster(data: xarray.DataArray):
     data.load()
     polygons = numpy.array([[value, shapely.geometry.shape(polygon)] for polygon, value in rasterio.features.shapes(numpy.uint8(data.notnull().values)) if value != 0])
-    polygons = geopandas.GeoDataFrame({'value': polygons[:, 0], 'geometry': polygons[:, 1]}, crs=data.rio.crs)
-    transform = data.rio.transform()
-    polygons["geometry"] = polygons.affine_transform([transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff, ]).buffer(0)
+    if len(polygons) > 0:
+        polygons = geopandas.GeoDataFrame({'value': polygons[:, 0], 'geometry': polygons[:, 1]}, crs=data.rio.crs)
+        transform = data.rio.transform()
+        polygons["geometry"] = polygons.affine_transform([transform.a, transform.b, transform.d, transform.e, transform.xoff, transform.yoff, ]).buffer(0)
+    else:
+        polygons = geopandas.GeoDataFrame(geometry=[], crs=data.rio.crs)
 
     return polygons
     
@@ -313,7 +321,7 @@ def threshold_kelp(data, thresholds, roi):
     '''data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)'''
     #data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
     #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
-    data["kelp"] = data["kelp"].rio.clip([roi.geometry]) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
+    data["kelp"] = data["kelp"].rio.clip(roi.geometry, drop=False) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud high probability"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["thin cirrus"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["defective"], numpy.nan)
@@ -338,7 +346,7 @@ def kelp_single_day(client, date_YYMM, roi, thresholds):
                          patch_url=planetary_computer.sign)
 
     # Keep only low cloud events
-    roi = roi.to_crs(data["SCL"].rio.crs).iloc[0]
+    roi = roi.to_crs(data["SCL"].rio.crs).iloc[[0]]
     (data, ocean_cloud_percentage) = screen_by_SCL_in_ROI(data, roi, MAX_OCEAN_CLOUD_PERCENTAGE)
 
     for key in data.data_vars:

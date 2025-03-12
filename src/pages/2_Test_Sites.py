@@ -40,6 +40,7 @@ def main():
     display_size = 700
     date_format = "%Y-%m-%d"
     data_path = pathlib.Path.cwd() / "data"
+    remote_raster_path = pathlib.Path("/nesi/project/niwa03660/ZBD2023_outputs")
     
     streamlit.button("Re-run")
     streamlit.title('Kelp Demo - click area plot to select raster display')
@@ -58,23 +59,32 @@ def main():
         streamlit.session_state['spectra'] = None
     
     streamlit.subheader("Table and Plot of areas")
-    kelp_info = pandas.read_csv(raster_path / "info.csv")
+    kelp_info = pandas.read_csv(raster_path / "info.csv"); kelp_info.drop(columns=["Unnamed: 0"], inplace=True, errors="ignore")
     col1, col2 = streamlit.columns([1, 5])
     with col1:
         streamlit.dataframe(kelp_info[["date", "area", "ocean cloud percentage"]])
     with col2:
         #streamlit.plotly_chart(plotly.express.line(kelp_info, x = 'date', y = ["ocean cloud percentage"], markers=True, text="date"))
-        plot = plotly.express.line(kelp_info, x = 'date', y = ["area"], markers=True, text="date")
+        area_columns = ["area"]
+        for older_info_file in raster_path.glob("info_*.csv"):
+            older_kelp_info = pandas.read_csv(older_info_file)
+            older_kelp_info.drop(columns=["Unnamed: 0", "file", "ocean cloud percentage"], inplace=True, errors="ignore")
+            older_kelp_info.rename(inplace=True, columns={"area": f"area {older_info_file.stem.replace('area_', '')}"})
+            area_columns.append(f"area {older_info_file.stem.replace('area_', '')}")
+            kelp_info = pandas.merge(kelp_info, older_kelp_info, on=['date'], how="outer")
+        
+        plot = plotly.express.line(kelp_info, x = 'date', y = area_columns, markers=True, text="date")
         event = streamlit.plotly_chart(plot, on_select="rerun")
         
     selection = event["selection"]["point_indices"]
     
     if len(selection):
-        data_file = pathlib.Path(kelp_info["file"].iloc[selection[0]])
+        csv_file_path = pathlib.Path(kelp_info["file"].iloc[selection[0]])
+        data_file = remote_raster_path / csv_file_path.parent.name / csv_file_path.name
         streamlit.subheader(f"Plot {kelp_info["date"].iloc[selection[0]]} with {kelp_info["ocean cloud percentage"].iloc[selection[0]]:.2f}% ocean cloud")
         streamlit.caption("May take time to load...")
         
-        data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze("band", drop=True)
+        data = rioxarray.rioxarray.open_rasterio(data_file, chunks=True).squeeze("band", drop=True, errors="ignore")
         transformer = pyproj.Transformer.from_crs(utils.CRS_WSG, data.rio.crs)
         
         with open(data_file, "rb") as binary_file:
