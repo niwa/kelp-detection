@@ -30,7 +30,7 @@ def main():
 
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
-    thresholds = {"min_ndvi": 0.03, "max_ndvi": 0.7, "max_ndwi": 0.1, "min_ndvri": 0.03, "max_ndwi2": -0.2,}
+    thresholds = {"min_ndvi": 0.213, "max_ndwi": 0.1, "max_ndwi2": -0.2,} # "max_ndvi": 0.7, "min_ndvri": 0.03, "min_ndvi": 0.03
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
@@ -39,13 +39,13 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
-    for site_index, row in test_sites_wsg.iterrows():
+    for site_index, row in test_sites_wsg.iterrows(): # [test_sites_wsg["name"]=="matau"]
 
         site_name = row['name']
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/project/niwa03660/ZBD2023_outputs") / f"{site_name}"
+        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
@@ -69,7 +69,6 @@ def main():
             months = [f"{year}-{str(month).zfill(2)}" for month in list(range(1, 13))]
 
             for month_YYMM in months:
-
                 if max_date > datetime.datetime.strptime(month_YYMM, '%Y-%m'):
                     print(f"\tSkipping {month_YYMM} as run previously. Delete if you want a rerun")
                     continue
@@ -127,10 +126,12 @@ def main():
                         encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
                     data.isel(time=index).to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
+                pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(remote_raster_path / "info.csv", index=False)
 
         # Save results
         kelp_info = pandas.DataFrame.from_dict(kelp_info, orient='columns')
         kelp_info.to_csv(raster_path / "info.csv", index=False)
+        kelp_info.to_csv(remote_raster_path / "info.csv", index=False)
 
 if __name__ == '__main__':
     main()

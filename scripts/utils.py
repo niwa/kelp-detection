@@ -260,7 +260,7 @@ def update_raster_defaults(raster):
 def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     data["SCL"].load()
     if not roi.geometry.intersects(shapely.box(*data.rio.bounds())).any():
-        print(f"\t\tWanring no intersection with ROI. Skipping.")
+        print(f"\t\tWarning no intersection with ROI. Skipping.")
         return data
     data["SCL"] = data["SCL"].rio.clip(roi.geometry)
     data["SCL"].rio.write_crs(data["SCL"].rio.crs, inplace=True);
@@ -308,19 +308,21 @@ def threshold_kelp(data, thresholds, roi):
     data["ndvi"] = (data[common_name_to_band("nir")] - data[common_name_to_band("red")]) / (data[common_name_to_band("nir")] + data[common_name_to_band("red")])
     data["ndvri"] = (data["B05"] - data[common_name_to_band("red")]) / (data["B05"] + data[common_name_to_band("red")])
     data["ndwi"] = (data[common_name_to_band("green")] - data[common_name_to_band("nir")]) / (data[common_name_to_band("green")] + data[common_name_to_band("nir")])
-    data["ndwi2"] = (data[common_name_to_band("swir16")] + data["B05"]) / (data[common_name_to_band("swir16")] - data["B05"])
-    data["ndwi3"] = (data[common_name_to_band("blue")] + data[common_name_to_band("coastal")]) / (data[common_name_to_band("blue")] - data[common_name_to_band("coastal")])
+    data["ndwi2"] = (data[common_name_to_band("swir16")] - data["B05"]) / (data[common_name_to_band("swir16")] + data["B05"])
+    data["ndwi3"] = (data[common_name_to_band("blue")] - data[common_name_to_band("coastal")]) / (data[common_name_to_band("blue")] + data[common_name_to_band("coastal")])
     data["ndwi4"] = (data[common_name_to_band("water vapor")] - data[common_name_to_band("nir")]) / (data[common_name_to_band("water vapor")] + data[common_name_to_band("nir")])
     update_raster_defaults(data)
 
     # Calculate Kelp
     data["kelp"] = (data[common_name_to_band("nir")] - data[common_name_to_band("red")]) / (data[common_name_to_band("nir")] + data[common_name_to_band("red")])
-    data["kelp"] = data["kelp"].where(data["ndvi"].data > thresholds["min_ndvi"], numpy.nan)
-    data["kelp"] = data["kelp"].where(data["ndwi"].data < thresholds["max_ndwi"], numpy.nan)
-    data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)
-    '''data["kelp"] = data["kelp"].where(data["ndwi2"].data < thresholds["max_ndwi2"], numpy.nan)'''
-    #data["kelp"] = data["kelp"].where(data["ndvi"].data < thresholds["max_ndvi"], numpy.nan)
-    #data["kelp"] = data["kelp"].where(data["ndvri"].data > thresholds["min_ndvri"], numpy.nan)
+    for name, value in thresholds.items():
+        if "min_" in name:
+            data["kelp"] = data["kelp"].where(data[name.replace("min_", "")].data > value, numpy.nan)
+        elif "max_" in name:
+            data["kelp"] = data["kelp"].where(data[name.replace("max_", "")].data < value, numpy.nan)
+        else:
+            print(f"Threshold does not specify min or max: {name}")
+
     data["kelp"] = data["kelp"].rio.clip(roi.geometry, drop=False) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud high probability"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["thin cirrus"], numpy.nan)
