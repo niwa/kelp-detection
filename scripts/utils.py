@@ -323,7 +323,14 @@ def threshold_kelp(data, thresholds, roi):
         else:
             print(f"Threshold does not specify min or max: {name}")
 
-    data["kelp"] = data["kelp"].rio.clip(roi.geometry, drop=False) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
+    # Either clip all dates the same, or clip date by date
+    if isinstance(roi, list):
+        for index in range(len(data["kelp"].time)):
+            data.loc[{'time': data.time[index].values}] = data.isel(time=index).rio.clip(roi[index].geometry, drop=False)
+    elif isinstance(roi, pandas.DataFrame):
+        data["kelp"] = data["kelp"].rio.clip(roi.geometry, drop=False) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
+    else:
+        raise ValueError(f"roi should be a GeoPandas GeoDataFrame or a list of these. It is: {roi}")
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["cloud high probability"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["thin cirrus"], numpy.nan)
     data["kelp"] = data["kelp"].where(data["SCL"] != SCL_DICT["defective"], numpy.nan)

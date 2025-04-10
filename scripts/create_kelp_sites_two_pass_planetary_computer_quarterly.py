@@ -140,7 +140,7 @@ def main():
                 # Create buffered area around kelp beds
                 kelp_polygons_buffered = []
                 for index in range(len(data["kelp"].time)):
-                    kelp_polygons_i = utils.polygon_from_raster(data["kelp"].isel(time=index)).explode()
+                    kelp_polygons_i = utils.polygon_from_raster(data["kelp"].isel(time=index)).explode(ignore_index=True, index_parts=False)
                     kelp_polygons_i = kelp_polygons_i[kelp_polygons_i.area > min_pixels*(utils.RASTER_DEFAULTS["resolution"]**2)]
                     kelp_polygons_i = kelp_polygons_i.buffer(utils.RASTER_DEFAULTS["resolution"] * buffer)
                     kelp_polygons_i = geopandas.GeoDataFrame(geometry=[kelp_polygons_i.union_all()], crs=kelp_polygons_i.crs)
@@ -148,7 +148,7 @@ def main():
                     kelp_polygons_buffered.append(kelp_polygons_i)
                 
                 # Caclulate Kelp from second thresholds - reset data first
-                data = utils.threshold_kelp(data, second_thresholds[year], roi)
+                data = utils.threshold_kelp(data, second_thresholds[year], kelp_polygons_buffered)
                 
                 # Save combined polygon and area
                 kelp_polygons = []
@@ -160,7 +160,7 @@ def main():
                     kelp_polygons = geopandas.GeoDataFrame(geometry=[], crs=data.rio.crs)
                 kelp_polygons = kelp_polygons.dissolve()
                 kelp_polygons.to_file(raster_path / f"{date_range.replace('/', '_')}_kelp.gpkg", index=False)
-                
+
                 kelp_info["area"].append(kelp_polygons.area.sum())
                 kelp_info["file"].append(raster_path / f"{date_range.replace('/', '_')}_kelp.gpkg")
                 kelp_info["date"].append(pandas.to_datetime(date_range.split("/")[0]).strftime(date_format))
@@ -172,13 +172,6 @@ def main():
                     for index in range(len(data["kelp"].time)):
 
                         filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
-
-                        # Clip each kelp date to the buffered search area
-                        data_i = data.isel(time=index)
-                        if kelp_polygons_buffered[index].area.sum() > 0:
-                            data_i["kelp"] = data["kelp"].isel(time=index).rio.clip(kelp_polygons_buffered[index].geometry)
-                        else:
-                            data_i["kelp"].data[:] = numpy.nan
 
                         kelp = data_i["kelp"].load()
                         kelp_info_individual["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
