@@ -326,7 +326,10 @@ def threshold_kelp(data, thresholds, roi):
     # Either clip all dates the same, or clip date by date
     if isinstance(roi, list):
         for index in range(len(data["kelp"].time)):
-            data.loc[{'time': data.time[index].values}] = data.isel(time=index).rio.clip(roi[index].geometry, drop=False)
+            if roi[index].area.sum() > 0:
+                data.loc[{'time': data.time[index].values}] = data.isel(time=index).rio.clip(roi[index].geometry, drop=False)
+            else:
+                data.loc[{'time': data.time[index].values}] = numpy.nan
     elif isinstance(roi, pandas.DataFrame):
         data["kelp"] = data["kelp"].rio.clip(roi.geometry, drop=False) #land.to_crs(data["kelp"].rio.crs).geometry.values, invert=True)
     else:
