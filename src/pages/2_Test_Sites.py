@@ -81,7 +81,7 @@ def main():
             figure.add_trace(plotly.graph_objects.Scatter(x=older_kelp_info["date"], y=older_kelp_info[name], mode="lines+markers", name=name))
         
         if (raster_path / "info.csv").exists():
-            figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["area"], mode="lines+markers", name="Latest run" ))
+            figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["area"], mode="lines+markers", name="Latest run (two pass NDVI 0.03, anomaly removal using NDVI 0.213)" ))
         figure.update_layout(title="Area's by date across algorithm runs", xaxis_title="date", yaxis_title="Area [m^2]", legend_title="Algorithms", template="plotly_white" )
         event = streamlit.plotly_chart(figure, on_select="rerun")
         

@@ -29,6 +29,30 @@ SCL_DICT = {"no data": 0, "defective": 1, "cast shadow": 2, "cloud shadow": 3,
 
 RASTER_DEFAULTS = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
 
+
+
+
+# https://sentiwiki.copernicus.eu/web/s2-processing
+# https://sentinels.copernicus.eu/web/sentinel/-/copernicus-sentinel-2-major-products-upgrade-upcoming
+# https://forum.step.esa.int/t/changes-in-band-data-after-25-jan-2022-baseline-04-00-harmonizevalues-sentinel-2-l2a-snappy/36270
+BAND_OFFSETS_SCALING_FACTOR = 10000
+BAND_OFFSET_POST_2022_01_25 = 1000
+BAND_OFFSETS_POST_2022_01_25 = {
+    "B01": -0.0009,
+    "B02": -0.0002,
+    "B03": -0.0002,
+    "B04": -0.0002,
+    "B05": -0.0001,
+    "B06": -0.0002,
+    "B07": -0.0002,
+    "B08": -0.0002,
+    "B8A": -0.0002,
+    "B09": -0.0001,
+    "B10": -0.0001,
+    "B11": -0.0001,
+    "B12": -0.0001,
+}
+
 # source: https://sentiwiki.copernicus.eu/web/s2-mission#S2Mission-SpectralResolutionS2-Mission-Spectral-Resolution
 SENTINEL_2B_BAND_INFO = {
     "B01": {"name": "coastal", "wavelength": 442.7, "bandwidth": 20},
@@ -255,6 +279,23 @@ def update_raster_defaults(raster):
             raster.rio.write_nodata(0, encoded=True, inplace=True)
         else: # assume float
             raster.rio.write_nodata(numpy.nan, encoded=True, inplace=True)
+
+def harmonize_post_2022(raster):
+    harmonize_date = "2022-01-25"
+    
+    for index in range(len(raster["time"])):
+        if numpy.datetime64(harmonize_date) < raster["time"].isel(time=index).values:
+            print(f"\t\tHarmonizing date {raster["time"].isel(time=index).values}")
+            raster_i = raster.isel(time=index)
+
+            for band in SENTINEL_2B_BAND_INFO.keys():
+                #breakpoint()
+                if raster_i[band].data.dtype == 'uint16':
+                    raster_i[band] = raster_i[band].clip(min=1000) - BAND_OFFSET_POST_2022_01_25
+                else: # Assume normalized float
+                    raster_i[band] = raster_i[band].clip(min=1000) - BAND_OFFSET_POST_2022_01_25
+            raster.loc[{'time': raster.time[index].values}] = raster_i
+    return raster
 
 
 def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):

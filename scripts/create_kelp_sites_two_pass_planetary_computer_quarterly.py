@@ -33,23 +33,26 @@ def main():
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
     
     # Define thresholds by year
-    thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} # "max_ndvi": 0.7, "min_ndvri": 0.03
-    thresholds_post_2022 = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.06,}
+    thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} # "max_ndwi2": -0.23 # "max_ndvi": 0.7, "min_ndvri": 0.03, 
+    #thresholds_post_2022 = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} #-0.06
     first_thresholds = {year: copy.deepcopy(thresholds) for year in range(2016, 2025)}
-    for year in range(2022, 2025):
-        first_thresholds[year] = thresholds_post_2022 
+    '''for year in range(2022, 2025):
+        first_thresholds[year] = thresholds_post_2022 '''
     anomaly_thresholds = {"min_ndvi": 0.213, "max_ndwi": 0.1, "max_ndwi2": -0.2} 
     anomaly_thresholds_by_year = {year: copy.deepcopy(anomaly_thresholds) for year in range(2016, 2025)}
-    for year in range(2022, 2025):
-        anomaly_thresholds_by_year[year]["max_ndwi2"] = thresholds_post_2022["max_ndwi2"]
-    second_thresholds = first_thresholds
+    '''for year in range(2022, 2025):
+        anomaly_thresholds_by_year[year]["max_ndwi2"] = thresholds_post_2022["max_ndwi2"]'''
+    thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,}
+    second_thresholds = {year: copy.deepcopy(thresholds) for year in range(2016, 2025)}
+    '''for year in range(2022, 2025):
+        second_thresholds[year] = thresholds_post_2022 '''
     
     print(f"Thresholds by year: {first_thresholds}, and Anomaly thresholds by year: {anomaly_thresholds_by_year}")
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
     anomaly_detection_factor = 20
-    save_individual = False
+    save_individual = True
     
     # Second pass - remove beds with less than the min_pixls, then buffer outward by the specified number of pixels
     buffer = 10; min_pixels = 10 # 5
@@ -83,7 +86,8 @@ def main():
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
         
         if save_individual and (raster_path / "info_individual.csv").exists():
-            kelp_info_individual = pandas.read_csv(raster_path / "info_individual.csv")
+            kelp_info_individual = pandas.read_csv(raster_path / "info_individual.csv").to_dict()
+            #breakpoint()
         elif save_individual:
             kelp_info_individual = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
 
@@ -92,7 +96,7 @@ def main():
             quarters = [f"{year-1}-12/{year}-02", f"{year}-03/{year}-05", f"{year}-06/{year}-08", f"{year}-09/{year}-11"]
 
             for date_range in quarters:
-                if max_date > datetime.datetime.strptime(date_range.split("/")[0], '%Y-%m'):
+                if max_date >= datetime.datetime.strptime(date_range.split("/")[0], '%Y-%m'):
                     print(f"\tSkipping {date_range} as run previously. Delete the info.csv if you want a rerun")
                     continue
 
@@ -107,6 +111,7 @@ def main():
 
                 data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
+                data = utils.harmonize_post_2022(data)
                 roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
 
                 # remove if no data
@@ -172,7 +177,8 @@ def main():
                     for index in range(len(data["kelp"].time)):
 
                         filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
-
+                        
+                        data_i = data.isel(time=index)
                         kelp = data_i["kelp"].load()
                         kelp_info_individual["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                         kelp_info_individual["file"].append(filename)
@@ -180,7 +186,7 @@ def main():
                         kelp_info_individual["ocean cloud percentage"].append(ocean_cloud_percentage[index])
 
                         encoding = {}
-                        for key in data.data_vars:
+                        for key in data_i.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
                         data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                     pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(raster_path / "info.csv", index=False)

@@ -32,7 +32,7 @@ def main():
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
     thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} # "max_ndvi": 0.7, "min_ndvri": 0.03
-    thresholds_post_2022 = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.06,}
+    thresholds_post_2022 = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2 ,} # -0.06 turned off different post 2022 behaviour 
     first_thresholds = {year: copy.deepcopy(thresholds) for year in range(2016, 2025)}
     for year in range(2022, 2025):
         first_thresholds[year] = thresholds_post_2022 
@@ -150,6 +150,7 @@ def main():
                     
                     filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
 
+                    data_i = data.isel(time=index)
                     kelp = data_i["kelp"].load()
                     kelp_info["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                     kelp_info["file"].append(filename)
