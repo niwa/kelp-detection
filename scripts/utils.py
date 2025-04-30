@@ -325,7 +325,7 @@ def screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage):
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["defective"]).sum(dim=["x", "y"])
     ocean_cloud_sum += (data["SCL"] == SCL_DICT["no data"]).sum(dim=["x", "y"]) - (ocean_mask == SCL_DICT["no data"]).sum(dim=["x", "y"])
     ocean_cloud_percentage = (ocean_cloud_sum / int(ocean_mask.sum())).data*100
-    print(f"\t\tOcean cloud percentage {list(map('{:.2f}%'.format, ocean_cloud_percentage))}")
+    print(f"\t\tOcean cloud percentage {list(map('{:.2f}%'.format, ocean_cloud_percentage))}. Keep those less than {max_ocean_cloud_percentage}.")
     cloud_mask_time = ocean_cloud_percentage < max_ocean_cloud_percentage
     data = data.isel(time=(cloud_mask_time))
     ocean_cloud_percentage = ocean_cloud_percentage[cloud_mask_time]
