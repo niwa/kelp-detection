@@ -367,8 +367,8 @@ def create_test_sites(distance_offshore = 4_000):
         y3 = 5024656.743; x3 = 2395219.092
         chatham_pitt = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
         
-        test_sites = geopandas.GeoDataFrame({"name": ["rakiora", "waikouaiti", "akaroa", "motunau", "marlborough","wellington", "chatham", "pearl_island", "rakiura_ulva", "bluff", "otekura", "brighton", "waikouaiti_oamaru", "timaru", "akaroa_banks_peninsula", "diamond_harbour", "black_sand_beach", "wharanui_kekerengu", "wellington_petone", "porirua", "riversdale_beach", "resolution_island", "auckland_island", "campbell_island", "long_sound", "chatham_pitt"], 
-                                             "geometry": [rakiora, waikouaiti, akaroa, motunau, marlborough, wellington, chatham, pearl_island, rakiura_ulva, bluff, otekura, brighton, waikouaiti_oamaru, timaru, akaroa_banks_peninsula, diamond_harbour, black_sand_beach, wharanui_kekerengu, wellington_petone, porirua, riversdale_beach, resolution_island, auckland_island, campbell_island, long_sound, chatham_pitt]}, crs=CRS)
+        test_sites = geopandas.GeoDataFrame({"name": ["motunau", "marlborough", "chatham", "pearl_island", "rakiura_ulva", "bluff", "otekura", "brighton", "waikouaiti_oamaru", "timaru", "akaroa_banks_peninsula", "diamond_harbour", "black_sand_beach", "wharanui_kekerengu", "wellington_petone", "porirua", "riversdale_beach", "resolution_island", "auckland_island", "campbell_island", "long_sound", "chatham_pitt"], 
+                                             "geometry": [motunau, marlborough, chatham, pearl_island, rakiura_ulva, bluff, otekura, brighton, waikouaiti_oamaru, timaru, akaroa_banks_peninsula, diamond_harbour, black_sand_beach, wharanui_kekerengu, wellington_petone, porirua, riversdale_beach, resolution_island, auckland_island, campbell_island, long_sound, chatham_pitt]}, crs=CRS)
 
         # clip to max distance offshore
         buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
