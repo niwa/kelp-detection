@@ -204,22 +204,6 @@ def create_test_sites(distance_offshore = 4_000):
 
     test_sites_path = DATA_PATH / "vectors" / f"test_sites_offshore_{buffer_label}.gpkg"
     if not test_sites_path.exists():
-        # Rakiora
-        y0 = 4787000; x0 = 1231000
-        y1 = 4793000; x1 = 1238000
-        rakiora = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
-        
-        # Waikouaiti
-        y0 = 4954605.549945548; x0 = 1431878.0905242788
-        y1 = 4944202.117311343; x1 = 1425794.9377906742
-        y2 = 4945964.990144346; x2 = 1418619.3004845034
-        y3 = 4957038.81103899;  x3 = 1425819.7669855051
-        waikouaiti = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-    
-        # Akaroa
-        y0 = 5140000; x0 = 1592000
-        y1 = 5156000; x1 = 1598000
-        akaroa = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
         # Motunau
         y0 = 5230000; x0 = 1604000
@@ -230,11 +214,6 @@ def create_test_sites(distance_offshore = 4_000):
         y0 = 5415458; x0 = 1660774
         y1 = 5502358; x1 = 1725491
         marlborough = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
-        
-        # Wellington
-        y0 = 5419000; x0 = 1753000
-        y1 = 5426000; x1 = 1759000
-        wellington = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
     
         # Chatham
         y0 = 5076000; x0 = 2449000
