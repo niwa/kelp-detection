@@ -32,18 +32,9 @@ def main():
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
     thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} # "max_ndvi": 0.7, "min_ndvri": 0.03
-    thresholds_post_2022 = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2 ,} # -0.06 turned off different post 2022 behaviour 
-    first_thresholds = {year: copy.deepcopy(thresholds) for year in range(2016, 2025)}
-    for year in range(2022, 2025):
-        first_thresholds[year] = thresholds_post_2022 
-
     anomaly_thresholds = {"min_ndvi": 0.213, "max_ndwi": 0.1, "max_ndwi2": -0.2} 
-    anomaly_thresholds_by_year = {year: copy.deepcopy(anomaly_thresholds) for year in range(2016, 2025)}
-    for year in range(2022, 2025):
-        anomaly_thresholds_by_year[year]["max_ndwi2"] = thresholds_post_2022["max_ndwi2"]
-    second_thresholds = first_thresholds
     
-    print(f"Thresholds by year: {first_thresholds}, and Anomaly thresholds by year: {anomaly_thresholds_by_year}")
+    print(f"Thresholds by year: {thresholds}, and Anomaly thresholds by year: {anomaly_thresholds}")
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
@@ -101,6 +92,7 @@ def main():
 
                 data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
+                data = utils.harmonize_post_2022(data)
                 roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
 
                 # remove if no data
@@ -118,7 +110,7 @@ def main():
                 utils.update_raster_defaults(data)
 
                 # Calculate Kelp from thresholds
-                data = utils.threshold_kelp(data, first_thresholds[year], roi)
+                data = utils.threshold_kelp(data, thresholds, roi)
                 
                 # Check for any big differences in kelp area using the anomaly thresholds
                 data["kelp_original"] = data["kelp"].copy(deep=True)
@@ -143,7 +135,7 @@ def main():
                     kelp_polygons_buffered.append(kelp_polygons_i)
                 
                 # Caclulate Kelp from second thresholds - reset data first
-                data = utils.threshold_kelp(data, second_thresholds[year], kelp_polygons_buffered)
+                data = utils.threshold_kelp(data, thresholds, kelp_polygons_buffered)
 
                 # Save each separately
                 for index in range(len(data["kelp"].time)):

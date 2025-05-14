@@ -34,20 +34,9 @@ def main():
     
     # Define thresholds by year
     thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} # "max_ndwi2": -0.23 # "max_ndvi": 0.7, "min_ndvri": 0.03, 
-    #thresholds_post_2022 = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,} #-0.06
-    first_thresholds = {year: copy.deepcopy(thresholds) for year in range(2016, 2025)}
-    '''for year in range(2022, 2025):
-        first_thresholds[year] = thresholds_post_2022 '''
     anomaly_thresholds = {"min_ndvi": 0.213, "max_ndwi": 0.1, "max_ndwi2": -0.2} 
-    anomaly_thresholds_by_year = {year: copy.deepcopy(anomaly_thresholds) for year in range(2016, 2025)}
-    '''for year in range(2022, 2025):
-        anomaly_thresholds_by_year[year]["max_ndwi2"] = thresholds_post_2022["max_ndwi2"]'''
-    thresholds = {"min_ndvi": 0.03, "max_ndwi": 0.1, "max_ndwi2": -0.2,}
-    second_thresholds = {year: copy.deepcopy(thresholds) for year in range(2016, 2025)}
-    '''for year in range(2022, 2025):
-        second_thresholds[year] = thresholds_post_2022 '''
     
-    print(f"Thresholds by year: {first_thresholds}, and Anomaly thresholds by year: {anomaly_thresholds_by_year}")
+    print(f"Thresholds by year: {thresholds}, and Anomaly thresholds by year: {anomaly_thresholds}")
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
@@ -129,15 +118,16 @@ def main():
                 utils.update_raster_defaults(data)
 
                 # Calculate Kelp from thresholds
-                data = utils.threshold_kelp(data, first_thresholds[year], roi)
+                data = utils.threshold_kelp(data, thresholds, roi)
                 
                 # Check for any big differences in kelp area using the anomaly thresholds
                 data["kelp_original"] = data["kelp"].copy(deep=True)
-                data = utils.threshold_kelp(data, anomaly_thresholds_by_year[year], roi)
+                data = utils.threshold_kelp(data, anomaly_thresholds, roi)
                 anomalous = data["kelp_original"].notnull().sum(dim=["x", "y"]) > anomaly_detection_factor * data["kelp"].notnull().sum(dim=["x", "y"])
                 if anomalous.any():
                     anomalous.load()
-                    print(f"\t\tKeeping only dates {data.time[anomalous==False].data} of {data.time.data} as anomalies detected in {data.time[anomalous].data}.")
+                    print(f"\t\tKeeping only dates {data.time[anomalous==False].data} of {data.time.data} as anomalies detected in {data.time[anomalous].data}."
+                          f"Area changes from {data['kelp_original'].notnull().sum(dim=['x', 'y']).load().data} to {data['kelp'].notnull().sum(dim=['x', 'y']).load().data}")
                     data = data.isel(time=(anomalous==False))  # Keep only those date that are not anomalies
                 data["kelp"] = data["kelp_original"]
                 data = data.drop_vars("kelp_original")
@@ -153,9 +143,11 @@ def main():
                     kelp_polygons_buffered.append(kelp_polygons_i)
                 
                 # Caclulate Kelp from second thresholds - reset data first
-                data = utils.threshold_kelp(data, second_thresholds[year], kelp_polygons_buffered)
+                data = utils.threshold_kelp(data, thresholds, kelp_polygons_buffered)
                 
                 # Save combined polygon and area
+                encoding =  {"zlib": True, "complevel": 9, "grid_mapping": data["kelp"].encoding["grid_mapping"]}
+                data["kelp"].to_netcdf(remote_raster_path / f'kelp_{date_range.replace("/","_")}.nc', format="NETCDF4", engine="netcdf4", encoding=encoding)
                 kelp_polygons = []
                 for index in range(len(data["kelp"].time)):
                     kelp_polygons.append(utils.polygon_from_raster(data["kelp"].isel(time=index)).explode())
