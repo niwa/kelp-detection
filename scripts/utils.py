@@ -14,6 +14,7 @@ import matplotlib.pyplot
 import planetary_computer
 import rasterio.features
 
+
 CRS = 2193
 CRS_WSG = 4326
 DATA_PATH = pathlib.Path.cwd() / ".." / "data"
@@ -28,9 +29,6 @@ SCL_DICT = {"no data": 0, "defective": 1, "cast shadow": 2, "cloud shadow": 3,
                 "thin cirrus": 10, "snow": 11}
 
 RASTER_DEFAULTS = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
-
-
-
 
 # https://sentiwiki.copernicus.eu/web/s2-processing
 # https://sentinels.copernicus.eu/web/sentinel/-/copernicus-sentinel-2-major-products-upgrade-upcoming
@@ -99,7 +97,6 @@ def common_name_to_band(common_name):
         print(f"Warning - no band name found for common name '{common_name}'")
     return band_name
 
-
 def download_nz_outline():
     dotenv.load_dotenv()
     (DATA_PATH / "vectors").mkdir(parents=True, exist_ok=True)
@@ -113,6 +110,7 @@ def download_nz_outline():
         big_islands = islands[islands.area > 1e8]
         main_islands = islands[islands.area > 9e8]
         main_islands.to_file(DATA_PATH / "vectors" / "main_islands.gpkg")
+    
 
 def create_tiles_south_island(distance_offshore = 4_000, tile_length = 10_000):
 
@@ -221,159 +219,117 @@ def create_test_sites(distance_offshore = 4_000):
         chatham = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
         # Pearl_Island - Polygon 1
-        y0 = 4765392.548; x0 = 1186668.695
-        y1 = 4766526.156; x1 = 1203208.628
-        y2 = 4745558.133; x2 = 1204618.362
-        y3 = 4744425.127; x3 = 1188137.514
-        pearl_island = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        y0 = 4745558; x0 = 1186669
+        y1 = 4766526; x1 = 1204618
+        pearl_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
-        # Rakiura_Ulva - Polygon 2
-        y0 = 4806923.259; x0 = 1223393.75
-        y1 = 4807955.094; x1 = 1240168.629
-        y2 = 4781353.231; x2 = 1241770.613
-        y3 = 4780321.985; x3 = 1225070.754
-        rakiura_ulva = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        # Bluff - Polygon 3
-        y0 = 4830360.526; x0 = 1242241.265
-        y1 = 4830857.133; x1 = 1250711.054
-        y2 = 4821717.457; x2 = 1251240.849	
-        y3 = 4821220.934; x3 = 1242783.961
-        bluff = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        
-        # Otekura - Polygon 4
-        y0 = 4860347.641; x0 = 1346361.882
-        y1 = 4860779.546; x1 = 1356941.436
-        y2 = 4845800.062; x2 = 1357540.583	
-        y3 = 4845368.259; x3 = 1346987.161
-        otekura = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        
-        # Brighton - Polygon 5
-        y0 = 4908935.224; x0 = 1381945.326
-        y1 = 4909431.101; x1 = 1396474.196
-        y2 = 4882464.746; x2 = 1397364.623	
-        y3 = 4881969.022; x3 = 1382899.412
-        brighton = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        
-        # Waikouaiti/Oamaru - Polygon 6
-        y0 = 5004879.127; x0 = 1410502.698
-        y1 = 5005746.563; x1 = 1442304.596
-        y2 = 4924655.966; x2 = 1444326.363	
-        y3 = 4923788.857; x3 = 1412932.621
-        waikouaiti_oamaru = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        
-        # Timaru - Polygon 7
-        y0 = 5087511.645; x0 = 1457497.571	
-        y1 = 5087648.539; x1 = 1463915.312
-        y2 = 5060139.98; x2 = 1464489.827		
-        y3 = 5060003.063; x3 = 1458099.198
-        timaru = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        
-        # Akaroa/Banks_Peninsula - Polygon 8
-        y0 = 5152237.078; x0 = 1591688.587	
-        y1 = 5152233.82; x1 = 1610605.963
-        y2 = 5137329.78; x2 = 1610582.21		
-        y3 = 5137333.038; x3 = 1591707.201
-        akaroa_banks_peninsula = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-      
-        # Diamond_Harbour - Polygon 9
-        y0 = 5173971.316; x0 = 1577935.033
-        y1 = 5174007.27; x1 = 1602109.261	
-        y2 = 5163620.856; x2 = 1602105.992		
-        y3 = 5163584.896; x3 = 1577969.224
-        diamond_harbour = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        # Pearl_Island - Polygon 1
+        y0 = 4765392.547801174; x0 = 1186668.6951792038 
+        y1 = 4745558.132935946; x1 = 1204618.3617616794
+        pearl_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
+        # # Rakiura_Ulva - Polygon 2
+        y0 = 4806923.258714756; x0 = 1223393.749804938
+        y1 = 4781353.230771581; x1 = 1241770.613262257
+        rakiura_ulva = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Black_Sand_Beach - Polygon 10
-        y0 = 5290077.142; x0 = 1637051.395
-        y1 = 5290024.582; x1 = 1645872.331	
-        y2 = 5273017.796; x2 = 1645760.05		
-        y3 = 5273070.381; x3 = 1636960.706
-        black_sand_beach = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-
+        #Bluff - Polygon 3
+        y0 = 4830360.526196695; x0 = 1242241.2651234234 
+        y1 = 4821717.456994672; x1 = 1251240.8490322009
+        bluff = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Wharanui_Kekerengu - Polygon 11
-        y0 = 5365944.665; x0 = 1676008.635
-        y1 = 5365689.659; x1 = 1697016.004
-        y2 = 5329490.578; x2 = 1696521.662
-        y3 = 5329745.891; x3 = 1675621.358
-        wharanui_kekerengu = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        #Otekura - Polygon 4
+        y0 = 4860347.641245389; x0 = 1346361.8815165777 
+        y1 = 4845800.062247097; x1 = 1357540.5830005489
+        otekura = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
+        #Brighton - Polygon 5
+        y0 = 4908935.224387027; x0 = 1381945.325897603 
+        y1 = 4882464.746047782; x1 = 1397364.623072171
+        brighton = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Wellington_Petone - Polygon 12
-        y0 = 5436416.666; x0 = 1747751.625
-        y1 = 5436005.95; x1 = 1766785.496
-        y2 = 5408693.077; x2 = 1766158.914
-        y3 = 5409104.252; x3 = 1747196.604
-        wellington_petone = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        #Waikouaiti/Oamaru - Polygon 6
+        y0 = 5004879.127438061; x0 = 1410502.6983560827 
+        y1 = 4924655.966017282; x1 = 1444326.3632238633
+        waikouaiti_oamaru = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
+       # Timaru - Polygon 7
+        y0 = 5087511.644697276; x0 = 1457497.571264771 
+        y1 = 5060139.980299613; x1 = 1464489.8274933768
+        timaru = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Porirua - Polygon 13
-        y0 = 5484483.841; x0 = 1746687.342
-        y1 = 5484019.852; x1 = 1768476.607
-        y2 = 5444444.79; x2 = 1767572.332
-        y3 = 5444909.606; x3 = 1745900.106
-        porirua = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-
+        #Akaroa/Banks Peninsula - Polygon 8
+        y0 = 5152237.077727701; x0 = 1591688.587486241 
+        y1 = 5137329.779619718; x1 = 1610582.2099330185
+        akaroa_banks_peninsula = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Riversdale_Beach - Polygon 14
-        y0 = 5472042.806; x0 = 1849275.314
-        y1 = 5471120.546; x1 = 1875205.45
-        y2 = 5427019.398; x2 = 1873552.62
-        y3 = 5427943.43; x3 = 1847778.548
-        riversdale_beach = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-
+        #Diamond Harbour - Polygon 9
+        y0 = 5173971.31578453; x0 = 1577935.0334800433 
+        y1 = 5163620.85565431; x1 = 1602105.9922983076
+        diamond_harbour = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Resolution_Island - Polygon 15
-        y0 = 4928278.769; x0 = 1087321.715
-        y1 = 4929678.624; x1 = 1104610.716
-        y2 = 4905362.732; x2 = 1106549.082
-        y3 = 4903963.197; x3 = 1089328.301
-        resolution_island = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        #Black Sand Beach - Polygon 10
+        y0 = 5290077.142456159; x0 = 1637051.3949440252 
+        y1 = 5273017.7958546905; x1 = 1645760.0500301563
+        black_sand_beach = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+        
+        #Wharanui_Kekerengu - Polygon 11
+        y0 = 5365944.664544601; x0 = 1676008.6346885192 
+        y1 = 5329490.577538376; x1 = 1696521.6617272045
+        wharanui_kekerengu = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+        
+        #Wellington Petone - Polygon 12
+        y0 = 5436416.665927516; x0 = 1747751.6254625104 
+        y1 = 5408693.077236777; x1 = 1766158.9137329785
+        wellington_petone = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
+        #Porirua - Polygon 13
+        y0 = 5484483.840918069; x0 = 1746687.3415808624 
+        y1 = 5444444.789643585; x1 = 1767572.332218603
+        porirua = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+        
+        #Riversdale Beach - Polygon 14
+        y0 = 5472042.805550492; x0 = 1849275.3141943226 
+        y1 = 5427019.398448853; x1 = 1873552.6197312057
+        riversdale_beach = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+
+        #Resolution Island - Polygon 15
+        y0 = 4928278.769345433; x0 = 1087321.7151045261 
+        y1 = 4905362.73248211; x1 = 1106549.0823926302
+        resolution_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+
+        #Auckland Island - Polygon 16
+        y0 = 4393640.2918102965; x0 = 1091931.9550202775 
+        y1 = 4332345.107631876; x1 = 1134071.2601488307
+        auckland_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
    
-        # Auckland Island - Polygon 16
-        y0 = 4393640.292; x0 = 1091931.955
-        y1 = 4397023.382; x1 = 1128247.225
-        y2 = 4332345.108; x2 = 1134071.26			
-        y3 = 4328976.187; x3 = 1098207.914
-        auckland_island = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        #Campbell Island - Polygon 17
+        y0 = 4184882.560227532; x0 = 1325592.6138859976 
+        y1 = 4159945.752115654; x1 = 1350215.1486898074
+        campbell_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
-        # Campbell Island - Polygon 17
-        y0 = 4184882.56; x0 = 1325592.614
-        y1 = 4186128.819; x1 = 1348873.726
-        y2 = 4159945.752; x2 = 1350215.149
-        y3 = 4158702.255; x3 = 1327058.688
-        campbell_island = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
+        #Long Sound - Polygon 18
+        y0 = 4897091.419368935; x0 = 1089522.6079213074 
+        y1 = 4865582.001213127; x1 = 1120288.4175324633
+        long_sound = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
+        #Chatham Pitt - Polygon 19
+        y0 = 5116898.692223684; x0 = 2406534.5690748165 
+        y1 = 5013799.557472538; x1 = 2478598.318150406
+        chatham_pitt = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
+
+
+        test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham", "Pearl Island", "Rakiura_Ulva", "Bluff", "Otekura", "Brighton", "Waikouaiti/Oamaru", "Timaru", "Akaroa/Banks Peninsula", "Diamond Harbour", "Black Sand Beach", " Wharanui Kekerengu", "Wellington/Petone", "Porirua", "Riversdale Beach" "Resolution Island", "Auckland Island", "Campbell Island", "Long Sound", "Chatham Pitt"], 
+                                               "geometry": [motunau, marlborough, chatham, pearl_island, rakiura_ulva, bluff, otekura, brighton, waikouaiti_oamaru, timaru, akaroa_banks_peninsula, diamond_harbour, black_sand_beach, wharanui_kekerengu, wellington_petone, porirua, riversdale_beach, resolution_island, auckland_island, campbell_island, long_sound, chatham_pitt]}, crs=CRS)
         
-        # Long Sound - Polygon 18
-        y0 = 4897091.419; x0 = 1089522.608
-        y1 = 4899355.495; x1 = 1117639.75
-        y2 = 4865582.001; x2 = 1120288.418
-        y3 = 4863318.911; x3 = 1092326.943
-        long_sound = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-
-        # Chatham_Pitt - Polygon 19
-        y0 = 5116898.692; x0 = 2406534.569
-        y1 = 5106046.774; x1 = 2491129.466
-        y2 = 5013799.557; x2 = 2478598.318
-        y3 = 5024656.743; x3 = 2395219.092
-        chatham_pitt = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3]])
-        
-        test_sites = geopandas.GeoDataFrame({"name": ["motunau", "marlborough", "chatham", "pearl_island", "rakiura_ulva", "bluff", "otekura", "brighton", "waikouaiti_oamaru", "timaru", "akaroa_banks_peninsula", "diamond_harbour", "black_sand_beach", "wharanui_kekerengu", "wellington_petone", "porirua", "riversdale_beach", "resolution_island", "auckland_island", "campbell_island", "long_sound", "chatham_pitt"], 
-                                             "geometry": [motunau, marlborough, chatham, pearl_island, rakiura_ulva, bluff, otekura, brighton, waikouaiti_oamaru, timaru, akaroa_banks_peninsula, diamond_harbour, black_sand_beach, wharanui_kekerengu, wellington_petone, porirua, riversdale_beach, resolution_island, auckland_island, campbell_island, long_sound, chatham_pitt]}, crs=CRS)
+        # test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham"], 
+        #                                         "geometry": [motunau, marlborough, chatham]}, crs=CRS)
 
         # clip to max distance offshore
         buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
         if not buffer_path.exists():
-            island_names = ["North Island or Te Ika-a-Māui", "South Island or Te Waipounamu", "Stewart Island/Rakiura", "Chatham Island"]
+            print(f"Creating buffer at: {buffer_path}")
+            island_names = ["North Island or Te Ika-a-Māui", "South Island or Te Waipounamu", "Stewart Island/Rakiura", "Chatham Island", "Auckland Island", "Campbell Island"]
             download_nz_outline()
             islands = geopandas.read_file(DATA_PATH / "vectors" / "nz_islands.gpkg")
             select_islands = islands[islands["name"].isin(island_names)]
@@ -381,6 +337,7 @@ def create_test_sites(distance_offshore = 4_000):
             offshore_buffer = geopandas.GeoDataFrame(geometry=select_islands.buffer(distance_offshore), crs=CRS).overlay(select_islands, how='difference')
             offshore_buffer.to_file(buffer_path)
         else:
+    
             offshore_buffer = geopandas.read_file(buffer_path)
 
         test_sites = test_sites.clip(offshore_buffer.dissolve().geometry.loc[0])
@@ -389,7 +346,7 @@ def create_test_sites(distance_offshore = 4_000):
         test_sites = geopandas.read_file(test_sites_path)
 
     return test_sites
-
+    
 
 def update_raster_defaults(raster):
     # works on DataArrays and Datasets and for ints and floats
@@ -412,7 +369,7 @@ def harmonize_post_2022(raster):
     
     for index in range(len(raster["time"])):
         if numpy.datetime64(harmonize_date) < raster["time"].isel(time=index).values:
-            print(f"\t\tHarmonizing date {raster["time"].isel(time=index).values}")
+            print(f"\t\tHarmonizing date {raster['time'].isel(time=index).values}")
             raster_i = raster.isel(time=index)
 
             for band in SENTINEL_2B_BAND_INFO.keys():
