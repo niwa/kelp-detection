@@ -84,6 +84,7 @@ def main():
 
                 data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
+                data = utils.harmonize_post_2022(data)
                 roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
 
                 # remove if no data
