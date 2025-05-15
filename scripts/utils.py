@@ -208,20 +208,17 @@ def create_test_sites(distance_offshore = 4_000):
         y1 = 5234000; x1 = 1609000
         motunau = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
-        # Marlborogh
-        y0 = 5415458; x0 = 1660774
-        y1 = 5502358; x1 = 1725491
+        # Marlborough
+        y0 = 5452792.709436077; x0 = 1694766.078227551 
+        y1 = 5409597.545143144; x1 = 1721605.6524659828
+      #  y0 = 5415458; x0 = 1660774
+        # y1 = 5502358; x1 = 1725491
         marlborough = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
     
         # Chatham
         y0 = 5076000; x0 = 2449000
         y1 = 5100000; x1 = 2470000
         chatham = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
-
-        # Pearl_Island - Polygon 1
-        y0 = 4745558; x0 = 1186669
-        y1 = 4766526; x1 = 1204618
-        pearl_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
         # Pearl_Island - Polygon 1
         y0 = 4765392.547801174; x0 = 1186668.6951792038 
@@ -304,8 +301,8 @@ def create_test_sites(distance_offshore = 4_000):
         auckland_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
    
         #Campbell Island - Polygon 17
-        y0 = 4184882.560227532; x0 = 1325592.6138859976 
-        y1 = 4159945.752115654; x1 = 1350215.1486898074
+        y0 = 4183314.323317456; x0 = 1323474.7402687492
+        y1 = 4158696.3337127017; x1 = 1357199.697531454
         campbell_island = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
         #Long Sound - Polygon 18
@@ -318,8 +315,9 @@ def create_test_sites(distance_offshore = 4_000):
         y1 = 5013799.557472538; x1 = 2478598.318150406
         chatham_pitt = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
+        
 
-        test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham", "Pearl Island", "Rakiura_Ulva", "Bluff", "Otekura", "Brighton", "Waikouaiti/Oamaru", "Timaru", "Akaroa/Banks Peninsula", "Diamond Harbour", "Black Sand Beach", " Wharanui Kekerengu", "Wellington/Petone", "Porirua", "Riversdale Beach" "Resolution Island", "Auckland Island", "Campbell Island", "Long Sound", "Chatham Pitt"], 
+        test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham", "Pearl Island", "Rakiura_Ulva", "Bluff", "Otekura", "Brighton", "Waikouaiti/Oamaru", "Timaru", "Akaroa/Banks Peninsula", "Diamond Harbour", "Black Sand Beach", " Wharanui Kekerengu", "Wellington/Petone", "Porirua", "Riversdale Beach", "Resolution Island", "Auckland Island", "Campbell Island", "Long Sound", "Chatham Pitt"], 
                                                "geometry": [motunau, marlborough, chatham, pearl_island, rakiura_ulva, bluff, otekura, brighton, waikouaiti_oamaru, timaru, akaroa_banks_peninsula, diamond_harbour, black_sand_beach, wharanui_kekerengu, wellington_petone, porirua, riversdale_beach, resolution_island, auckland_island, campbell_island, long_sound, chatham_pitt]}, crs=CRS)
         
         # test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham"], 

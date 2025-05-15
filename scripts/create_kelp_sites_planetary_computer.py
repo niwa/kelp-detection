@@ -19,8 +19,9 @@ def main():
     """ Create site datasets.
     """
     
-    test_sites = utils.create_test_sites(distance_offshore = 3_000)
-    test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
+    test_sites_andra_and_leigh_wsg_84 = utils.create_test_sites(distance_offshore = 3_000)
+    #test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
+    test_sites_wsg = test_sites_andra_and_leigh_wsg_84.to_crs(utils.CRS_WSG)
     land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
@@ -84,8 +85,10 @@ def main():
 
                 data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
+
                 data = utils.harmonize_post_2022(data)
-                roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
+                roi = test_sites_andra_and_leigh_wsg_84.to_crs(data["SCL"].rio.crs).loc[[site_index]]
+
 
                 # remove if no data
                 (data, ocean_cloud_percentage) = utils.screen_by_SCL_in_ROI(data, roi, max_ocean_cloud_percentage)
