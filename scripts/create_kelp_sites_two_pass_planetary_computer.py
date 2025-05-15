@@ -48,12 +48,12 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
-    for site_index, row in test_sites_wsg.iterrows(): # [test_sites_wsg["name"]=="matau"]
+    for site_index, row in test_sites_wsg[test_sites_wsg["name"]=="Pearl Island"].iterrows(): # [test_sites_wsg["name"]=="matau"]
         site_name = row['name']
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
+        remote_raster_path = raster_path #pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
@@ -130,7 +130,7 @@ def main():
                     kelp_polygons_i = utils.polygon_from_raster(data["kelp"].isel(time=index)).explode(ignore_index=True, index_parts=False)
                     kelp_polygons_i = kelp_polygons_i[kelp_polygons_i.area > min_pixels*(utils.RASTER_DEFAULTS["resolution"]**2)]
                     kelp_polygons_i = kelp_polygons_i.buffer(utils.RASTER_DEFAULTS["resolution"] * buffer)
-                    kelp_polygons_i = geopandas.GeoDataFrame(geometry=[kelp_polygons_i.union_all()], crs=kelp_polygons_i.crs)
+                    kelp_polygons_i = geopandas.GeoDataFrame(geometry=[kelp_polygons_i.unary_union], crs=kelp_polygons_i.crs)
                     kelp_polygons_i = kelp_polygons_i.overlay(roi, how="intersection", keep_geom_type=True)
                     kelp_polygons_buffered.append(kelp_polygons_i)
                 
