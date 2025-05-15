@@ -209,8 +209,8 @@ def create_test_sites(distance_offshore = 4_000):
         motunau = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
         
         # Marlborough
-        y0 = 5452792.709436077; x0 = 1694766.078227551 
-        y1 = 5409597.545143144; x1 = 1721605.6524659828
+        y0 = 5453055.733161794; x0 = 1694172.8611234897 
+        y1 = 5429822.496895627; x1 = 1713207.4453088508
       #  y0 = 5415458; x0 = 1660774
         # y1 = 5502358; x1 = 1725491
         marlborough = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
@@ -327,7 +327,7 @@ def create_test_sites(distance_offshore = 4_000):
         buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
         if not buffer_path.exists():
             print(f"Creating buffer at: {buffer_path}")
-            island_names = ["North Island or Te Ika-a-Māui", "South Island or Te Waipounamu", "Stewart Island/Rakiura", "Chatham Island", "Auckland Island", "Campbell Island"]
+            island_names = ["North Island or Te Ika-a-Māui", "South Island or Te Waipounamu", "Stewart Island/Rakiura", "Chatham Island", "Auckland Island", "Campbell Island/Motu Ihupuku"]
             download_nz_outline()
             islands = geopandas.read_file(DATA_PATH / "vectors" / "nz_islands.gpkg")
             select_islands = islands[islands["name"].isin(island_names)]
