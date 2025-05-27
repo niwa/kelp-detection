@@ -33,23 +33,7 @@ RASTER_DEFAULTS = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
 # https://sentiwiki.copernicus.eu/web/s2-processing
 # https://sentinels.copernicus.eu/web/sentinel/-/copernicus-sentinel-2-major-products-upgrade-upcoming
 # https://forum.step.esa.int/t/changes-in-band-data-after-25-jan-2022-baseline-04-00-harmonizevalues-sentinel-2-l2a-snappy/36270
-BAND_OFFSETS_SCALING_FACTOR = 10000
 BAND_OFFSET_POST_2022_01_25 = 1000
-BAND_OFFSETS_POST_2022_01_25 = {
-    "B01": -0.0009,
-    "B02": -0.0002,
-    "B03": -0.0002,
-    "B04": -0.0002,
-    "B05": -0.0001,
-    "B06": -0.0002,
-    "B07": -0.0002,
-    "B08": -0.0002,
-    "B8A": -0.0002,
-    "B09": -0.0001,
-    "B10": -0.0001,
-    "B11": -0.0001,
-    "B12": -0.0001,
-}
 
 # source: https://sentiwiki.copernicus.eu/web/s2-mission#S2Mission-SpectralResolutionS2-Mission-Spectral-Resolution
 SENTINEL_2B_BAND_INFO = {
@@ -317,7 +301,7 @@ def create_test_sites(distance_offshore = 4_000):
 
         
 
-        test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham", "Pearl Island", "Rakiura_Ulva", "Bluff", "Otekura", "Brighton", "Waikouaiti/Oamaru", "Timaru", "Akaroa/Banks Peninsula", "Diamond Harbour", "Black Sand Beach", " Wharanui Kekerengu", "Wellington/Petone", "Porirua", "Riversdale Beach", "Resolution Island", "Auckland Island", "Campbell Island", "Long Sound", "Chatham Pitt"], 
+        test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham", "Pearl Island", "Rakiura_Ulva", "Bluff", "Otekura", "Brighton", "Waikouaiti-Oamaru", "Timaru", "Akaroa-Banks Peninsula", "Diamond Harbour", "Black Sand Beach", " Wharanui Kekerengu", "Wellington-Petone", "Porirua", "Riversdale Beach", "Resolution Island", "Auckland Island", "Campbell Island", "Long Sound", "Chatham Pitt"], 
                                                "geometry": [motunau, marlborough, chatham, pearl_island, rakiura_ulva, bluff, otekura, brighton, waikouaiti_oamaru, timaru, akaroa_banks_peninsula, diamond_harbour, black_sand_beach, wharanui_kekerengu, wellington_petone, porirua, riversdale_beach, resolution_island, auckland_island, campbell_island, long_sound, chatham_pitt]}, crs=CRS)
         
         # test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham"], 

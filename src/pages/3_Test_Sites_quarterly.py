@@ -41,7 +41,7 @@ def main():
     display_size = 700
     date_format = "%Y-%m-%d"
     data_path = pathlib.Path.cwd() / "data"
-    remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs")
+    remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites_quarterly")
     
     streamlit.button("Re-run")
     streamlit.title('Kelp Demo - click area plot to select raster display')
@@ -65,7 +65,7 @@ def main():
     col1, col2 = streamlit.columns([1, 5])
     with col1:
         if (raster_path / "info_quarterly.csv").exists():
-            streamlit.dataframe(kelp_info[["date", "area", "dates considered"]])
+            streamlit.dataframe(kelp_info[["date", "area", "dates considered", "max coverage date"]])
         else:
             streamlit.markdown("No info_quarterly.csv. Older runs displayed, but raster view of selected date is not supported")
     with col2:
@@ -92,15 +92,18 @@ def main():
         streamlit.subheader(f"Plot quarter {kelp_info["date"].iloc[selection[0]]} calculated from dates {kelp_info["dates considered"].iloc[selection[0]]}.")
         streamlit.caption("May take time to load...")
         
-        #data_file = remote_raster_path / f"{csv_file_path.parent.name}_quarterly" / csv_file_path.name
+        
         kelp_polygons = geopandas.read_file(csv_file_path)
-
+        
         folium_map = folium.Map()
-
         land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
         kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="kelp polygon")
 
-
+        rgb_file = remote_raster_path / location / f"rgb_{kelp_info['max coverage date'].iloc[selection[0]]}.tif"
+        rgb = rioxarray.rioxarray.open_rasterio(rgb_file, chunks=True)#.drop_vars("band")
+        #print(rgb)
+        #rgb.odc.add_to(map=folium_map, name="Satellite RBG")
+        
         folium.LayerControl().add_to(folium_map)
         st_map =  streamlit_folium.st_folium(folium_map, width=900) 
 

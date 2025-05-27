@@ -41,12 +41,12 @@ def main():
     display_size = 700
     date_format = "%Y-%m-%d"
     data_path = pathlib.Path.cwd() / "data"
-    remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs")
+    remote_raster_path = data_path # pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs")
     
     streamlit.button("Re-run")
     streamlit.title('Kelp Demo - click area plot to select raster display')
     
-    test_sites = geopandas.read_file(data_path / "vectors" / "test_sites_offshore_3km.gpkg")
+    test_sites = geopandas.read_file(data_path / "vectors" / "test_sites_offshore_3km.gpkg") # "test_sites_offshore_3km_initial_list.gpkg"
     
     location = streamlit.selectbox("Select tile to display", (test_sites["name"]), index=0,)
     
@@ -89,7 +89,7 @@ def main():
     
     if len(selection) and (raster_path / "info.csv").exists():
         csv_file_path = pathlib.Path(kelp_info["file"].iloc[selection[0]])
-        data_file = remote_raster_path / csv_file_path.parent.name / csv_file_path.name
+        data_file = csv_file_path # remote_raster_path / csv_file_path.parent.name / csv_file_path.name
         streamlit.subheader(f"Plot {kelp_info["date"].iloc[selection[0]]} with {kelp_info["ocean cloud percentage"].iloc[selection[0]]:.2f}% ocean cloud")
         streamlit.caption("May take time to load...")
         
