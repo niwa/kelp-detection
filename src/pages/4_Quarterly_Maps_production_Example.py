@@ -9,17 +9,15 @@ import pages.scripts.colourmaps
 import datetime
 import folium
 import rioxarray
-import odc.stac
 import branca
 import plotly.express
 import plotly.graph_objects
 import plotly.subplots
 import pyproj
 import zipfile
+import leafmap
+import leafmap.foliumap
 
-
-#import holoviews
-#import hvplot.xarray
 
 module_path = pathlib.Path.cwd() / 'scripts'
 import sys
@@ -41,6 +39,10 @@ def main():
     )
     display_size = 700
     date_format = "%Y-%m-%d"
+    
+    collection = "sentinel-2-l2a"
+    rgb_bands = utils.get_band_names_from_common(['red', 'green', 'blue'])
+    
     data_path = pathlib.Path.cwd() / "data"
     remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites_quarterly")
     
@@ -86,18 +88,19 @@ def main():
         streamlit.subheader(f"Plot quarter {kelp_info["date"].iloc[selection[0]]} calculated from dates {kelp_info["dates considered"].iloc[selection[0]]}.")
         streamlit.caption("May take time to load...")
         
+        folium_map = leafmap.foliumap.Map() #location=center, zoom_start=13)
         
-        kelp_polygons = geopandas.read_file(csv_file_path)
-        
-        folium_map = folium.Map()
         #land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
+        kelp_polygons = geopandas.read_file(csv_file_path)
         kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
         kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="Quarter Kelp Extents")
         
-        rgb_file = remote_raster_path / location / f"rgb_{kelp_info['max coverage date'].iloc[selection[0]]}.tif"
-        rgb = rioxarray.rioxarray.open_rasterio(rgb_file, chunks=True)#.drop_vars("band")
-        #print(rgb)
-        #rgb.odc.add_to(map=folium_map, name="Satellite RBG")
+        tile_ids = kelp_info["Satellite Tile IDs"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
+        for tile_id in tile_ids:
+            folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc", rescale="0,1000", fit_bounds=False)
+        
+        bounds = kelp_polygons.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())
         
         folium.LayerControl().add_to(folium_map)
         st_map =  streamlit_folium.st_folium(folium_map, width=900) 

@@ -33,12 +33,6 @@ def main():
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = 
     
     filter_cloud_percentage = 30
-    max_ocean_cloud_percentage = 5
-    
-    anomaly_detection_factor = 20
-    
-    # Second pass - remove beds with less than the min_pixls, then buffer outward by the specified number of pixels
-    buffer = 10; min_pixels = 10 # 5
 
     # use publically available stac link such as
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
@@ -49,7 +43,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
+        remote_raster_path = raster_path # pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
@@ -67,6 +61,18 @@ def main():
 
         for index, row in kelp_info.iterrows():
             date_YYMMDD = row['date'] # datetime.datetime.strptime(row['date'], '%Y-%m')
+            filename = remote_raster_path / f'rgb_{date_YYMMDD}.nc'
+            
+            if filename.exists() and (filename.parent / f"{filename.stem}.tif").exists():
+                # Both already run - skip to the next date
+                print(f"\tSkip RGB for date: {date_YYMMDD} - already exists")
+                continue
+            # Remove if partial results
+            if filename.exists():                
+                filename.unlink(missing_ok=True)
+            if (filename.parent / f"{filename.stem}.tif").exists():
+                (filename.parent / f"{filename.stem}.tif").unlink(missing_ok=True)
+
             print(f"\tCreate RGB for date: {date_YYMMDD}")
             # run pystac client search to see available dataset
             search = client.search(
@@ -80,12 +86,15 @@ def main():
             data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                 resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
             roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
-
-            data_file = pathlib.Path(row["file"])
-            rgb = data[["B04", "B03","B02"]].to_array("rgb", name="all images").rio.clip(roi.geometry)
+            
+            rgb_bands = utils.get_band_names_from_common(["red", "green", "blue"])
+            rgb = utils.normalise_rgb(data.isel(time=0), rgb_bands)
             utils.update_raster_defaults(rgb)
-            rgb = rgb.squeeze('time', drop=True)
-            rgb.to_netcdf(data_file.parent / f'rgb_{data_file.name}', format="NETCDF4", engine="netcdf4", encoding={"all images": {"zlib": True, "complevel": 5, "grid_mapping": rgb.encoding["grid_mapping"]}})
+            rgb = rgb.to_array("rgb", name="Satellite RGB").rio.clip(roi.geometry)
+            encoding = {"Satellite RGB": {"zlib": True, "complevel": 9, "grid_mapping": data[rgb_bands[0]].encoding["grid_mapping"]}}
+            rgb.load()
+            rgb.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
+            #rgb.odc.write_cog(filename.parent / f"{filename.stem}.tif")
             
             # to display
             # rgb = rioxarray.rioxarray.open_rasterio(data_file.parent / f'rgb_{data_file.name}', chunks=True).drop_vars ("band")

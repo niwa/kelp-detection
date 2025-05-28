@@ -38,7 +38,6 @@ def main():
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
-    
     anomaly_detection_factor = 20
     
     # Second pass - remove beds with less than the min_pixls, then buffer outward by the specified number of pixels
@@ -48,7 +47,7 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
-    for site_index, row in test_sites_wsg[test_sites_wsg["name"]=="Pearl Island"].iterrows(): # [test_sites_wsg["name"]=="matau"]
+    for site_index, row in test_sites_wsg.iterrows(): # test_sites_wsg[test_sites_wsg["name"]=="matau"]
         site_name = row['name']
         
         print(f"Test site: {site_name}") 
