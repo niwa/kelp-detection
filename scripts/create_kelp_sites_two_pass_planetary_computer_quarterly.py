@@ -30,7 +30,7 @@ def main():
 
     date_format = "%Y-%m-%d"
 
-    bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") # bands = ["red", "green", "blue", "nir", "SCL", "swir16", "B05", "B8A"]
+    bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL")
     raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
     
     # Define thresholds by year
@@ -59,7 +59,8 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
 
-    for site_index, row in test_sites_wsg.iterrows(): # [test_sites_wsg["name"]=="matau"]
+    test_sites_wsg = test_sites_wsg.iloc[14:]
+    for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
         dates_to_ignore = site_dates_to_ignore[site_name] if site_name in site_dates_to_ignore.keys() else {}
@@ -71,7 +72,7 @@ def main():
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI - convex hull to allow search
-        site_bbox = row.geometry.bounds # shapely.box(*row.geometry.bounds) #.to_crs(utils.CRS_WSG).iloc[0].geometr
+        site_bbox = row.geometry.bounds
 
         filters = {"eo:cloud_cover":{"lt":filter_cloud_percentage}} 
 

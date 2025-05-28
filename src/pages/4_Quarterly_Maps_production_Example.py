@@ -64,7 +64,7 @@ def main():
     col1, col2 = streamlit.columns([1, 5])
     with col1:
         if (raster_path / "info_quarterly.csv").exists():
-            streamlit.dataframe(kelp_info[["date", "area", "dates considered", "max coverage date", "proportion of max coverage"]])
+            streamlit.dataframe(kelp_info[["date", "area", "dates considered", "proportion of max coverage"]])
         else:
             streamlit.markdown("No info_quarterly.csv.")
     with col2:
@@ -77,7 +77,7 @@ def main():
             
             figure.update_layout(title="Proportion of max coverage by date across algorithm runs",
                                  xaxis_title="date", yaxis2_title="Area [m^2]",
-                                 yaxis_title="Max Coverage Proportion [%]", yaxis={'range': [0, 50]},
+                                 yaxis_title="Max Coverage Proportion [%]", yaxis={'range': [0, 75]},
                                  legend_title="Algorithms", template="plotly_white" )
             event = streamlit.plotly_chart(figure, on_select="rerun")
         
@@ -96,8 +96,11 @@ def main():
         kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="Quarter Kelp Extents")
         
         tile_ids = kelp_info["Satellite Tile IDs"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
-        for tile_id in tile_ids:
-            folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc", rescale="0,1000", fit_bounds=False)
+        percentiles_2 = kelp_info["Percentile 2"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
+        percentiles_98 = kelp_info["Percentile 98"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
+        #streamlit.text(f"Percentile 2: {percentiles_2}, Percentile 98: {percentiles_98}.")
+        for index, tile_id in enumerate(tile_ids):
+            folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc", rescale=f"{percentiles_2[index]},{percentiles_98[index]}", fit_bounds=False)
         
         bounds = kelp_polygons.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
         folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())

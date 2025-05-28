@@ -38,7 +38,7 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
-    for site_index, row in test_sites_wsg.iterrows(): # [test_sites_wsg["name"]=="matau"]
+    for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
         print(f"Test site: {site_name}") 
@@ -48,7 +48,7 @@ def main():
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI - convex hull to allow search
-        site_bbox = row.geometry.bounds # shapely.box(*row.geometry.bounds) #.to_crs(utils.CRS_WSG).iloc[0].geometr
+        site_bbox = row.geometry.bounds 
         filters = {"eo:cloud_cover":{"lt":filter_cloud_percentage}} 
 
         # Start from year of failure if already partial results
@@ -94,11 +94,6 @@ def main():
             encoding = {"Satellite RGB": {"zlib": True, "complevel": 9, "grid_mapping": data[rgb_bands[0]].encoding["grid_mapping"]}}
             rgb.load()
             rgb.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
-            #rgb.odc.write_cog(filename.parent / f"{filename.stem}.tif")
-            
-            # to display
-            # rgb = rioxarray.rioxarray.open_rasterio(data_file.parent / f'rgb_{data_file.name}', chunks=True).drop_vars ("band")
-            # rgb.odc.add_to(map=folium_map, name="Satellite RBG")
 
 if __name__ == '__main__':
     main()

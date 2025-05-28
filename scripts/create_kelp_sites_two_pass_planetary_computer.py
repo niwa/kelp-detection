@@ -57,7 +57,7 @@ def main():
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI - convex hull to allow search
-        site_bbox = row.geometry.bounds # shapely.box(*row.geometry.bounds) #.to_crs(utils.CRS_WSG).iloc[0].geometr
+        site_bbox = row.geometry.bounds
 
         filters = {"eo:cloud_cover":{"lt":filter_cloud_percentage}} 
 
