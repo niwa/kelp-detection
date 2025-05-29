@@ -14,7 +14,7 @@ import plotly.express
 import plotly.graph_objects
 import plotly.subplots
 import pyproj
-import zipfile
+import io
 import leafmap
 import leafmap.foliumap
 
@@ -27,6 +27,47 @@ import utils
 import importlib
 importlib.reload(utils)
 
+def save_geojson_with_bytesio(dataframe):
+    #Function to return bytesIO of the geojson
+    bindary_stream = io.BytesIO()
+    dataframe.to_file(bindary_stream,  driver='GeoJSON')
+    return bindary_stream
+
+def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFrame):
+    
+    if streamlit.session_state.quarterly_index != streamlit.session_state.quareterly_map_index:
+        collection = "sentinel-2-l2a"
+        rgb_bands = utils.get_band_names_from_common(['red', 'green', 'blue'])
+        
+        date_index = streamlit.session_state['quarterly_index'][0]
+        # Either create map or just use the existing if no change to date
+        csv_file_path = pathlib.Path(kelp_info["file"].iloc[date_index])
+        streamlit.subheader(f"Plot quarter {kelp_info["date"].iloc[date_index]} calculated from dates {kelp_info["dates considered"].iloc[date_index]}.")
+        streamlit.caption("May take time to load...")
+
+        folium_map = leafmap.foliumap.Map() #location=center, zoom_start=13)
+
+        #land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
+        kelp_polygons = geopandas.read_file(csv_file_path)
+        kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
+        kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="Quarter Kelp Extents")
+
+        tile_ids = kelp_info["Satellite Tile IDs"].iloc[date_index].replace(",", "").strip(" ").split(" ")
+        percentiles_2 = kelp_info["Percentile 2"].iloc[date_index].replace(",", "").strip(" ").split(" ")
+        percentiles_98 = kelp_info["Percentile 98"].iloc[date_index].replace(",", "").strip(" ").split(" ")
+        #streamlit.text(f"Percentile 2: {percentiles_2}, Percentile 98: {percentiles_98}.")
+        for index, tile_id in enumerate(tile_ids):
+            folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc", rescale=f"{percentiles_2[index]},{percentiles_98[index]}", fit_bounds=False)
+
+        bounds = kelp_polygons.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())
+
+        folium.LayerControl().add_to(folium_map)
+
+        streamlit.session_state.quarterly_map = folium_map
+        streamlit.session_state.quareterly_map_index = streamlit.session_state.quarterly_index
+    
+    return streamlit.session_state.quarterly_map
 
 def main():
     """ Create / Update the geofabric summary information and display in a dashboard.
@@ -40,8 +81,10 @@ def main():
     display_size = 700
     date_format = "%Y-%m-%d"
     
-    collection = "sentinel-2-l2a"
-    rgb_bands = utils.get_band_names_from_common(['red', 'green', 'blue'])
+    if 'quarterly_index' not in streamlit.session_state:
+        streamlit.session_state.quarterly_index = []
+        streamlit.session_state.quareterly_map_index = []
+        streamlit.session_state.quareterly_prev_location = None
     
     data_path = pathlib.Path.cwd() / "data"
     remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites_quarterly")
@@ -53,10 +96,21 @@ def main():
     
     location = streamlit.selectbox("Select tile to display", (test_sites["name"]), index=0,)
     
+    if location != streamlit.session_state.quareterly_prev_location:
+        streamlit.session_state.quareterly_prev_location = location
+        streamlit.session_state.quarterly_index = streamlit.session_state.quareterly_map_index = []
+    
     # Define the region
     raster_path = data_path / "rasters" / "test_sites_quarterly" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
     kelp_total_extents = geopandas.read_file(raster_path / "presence_absence_map.gpkg")
+    
+    # Provide a download button for the kelp presence absence map
+    streamlit.download_button(label=f"Download {location}'s Kelp Map 2016-2024",
+                              data=save_geojson_with_bytesio(kelp_total_extents),
+                              file_name=f"kelp_presence_absence_map_{location}.geojson",
+                              mime="application/geo+json",
+                             )
     
     streamlit.subheader("Table and Plot of areas")
     if (raster_path / "info_quarterly.csv").exists():
@@ -82,31 +136,14 @@ def main():
             event = streamlit.plotly_chart(figure, on_select="rerun")
         
     selection = event["selection"]["point_indices"]
+    if len(selection) > 0:
+        streamlit.session_state.quarterly_index = selection
     
-    if len(selection) and (raster_path / "info_quarterly.csv").exists():
-        csv_file_path = pathlib.Path(kelp_info["file"].iloc[selection[0]])
-        streamlit.subheader(f"Plot quarter {kelp_info["date"].iloc[selection[0]]} calculated from dates {kelp_info["dates considered"].iloc[selection[0]]}.")
-        streamlit.caption("May take time to load...")
-        
-        folium_map = leafmap.foliumap.Map() #location=center, zoom_start=13)
-        
-        #land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
-        kelp_polygons = geopandas.read_file(csv_file_path)
-        kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
-        kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="Quarter Kelp Extents")
-        
-        tile_ids = kelp_info["Satellite Tile IDs"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
-        percentiles_2 = kelp_info["Percentile 2"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
-        percentiles_98 = kelp_info["Percentile 98"].iloc[selection[0]].replace(",", "").strip(" ").split(" ")
-        #streamlit.text(f"Percentile 2: {percentiles_2}, Percentile 98: {percentiles_98}.")
-        for index, tile_id in enumerate(tile_ids):
-            folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc", rescale=f"{percentiles_2[index]},{percentiles_98[index]}", fit_bounds=False)
-        
-        bounds = kelp_polygons.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
-        folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())
-        
-        folium.LayerControl().add_to(folium_map)
-        st_map =  streamlit_folium.st_folium(folium_map, width=900) 
+    #streamlit.text(f"quarterly_index: {streamlit.session_state.quarterly_index}, quareterly_map_index: {streamlit.session_state.quareterly_map_index}, selection: {selection}")
+    
+    if len(streamlit.session_state.quarterly_index) and (raster_path / "info_quarterly.csv").exists():
+        folium_map = get_map(kelp_total_extents, kelp_info)
+        streamlit_folium.folium_static(folium_map, width=900)
 
 
 if __name__ == '__main__':

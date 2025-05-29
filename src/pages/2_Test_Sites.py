@@ -14,7 +14,6 @@ import branca
 import plotly.express
 import plotly.graph_objects
 import pyproj
-import zipfile
 
 
 #import holoviews

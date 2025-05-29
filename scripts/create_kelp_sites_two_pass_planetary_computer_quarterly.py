@@ -50,7 +50,7 @@ def main():
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
     anomaly_detection_factor = 20
-    save_rasters = False
+    debug = False
     
     # Second pass - remove beds with less than the min_pixls, then buffer outward by the specified number of pixels
     buffer = 10; min_pixels = 10 # 5
@@ -59,7 +59,7 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
 
-    test_sites_wsg = test_sites_wsg.iloc[14:]
+    test_sites_wsg = test_sites_wsg.iloc[17:]
     for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
@@ -151,6 +151,10 @@ def main():
                 data["kelp"] = data["kelp_original"]
                 data = data.drop_vars("kelp_original")
                 
+                if len(data.time.data) == 0:
+                    print(f"\t\tNo dates remain after anomaly detection. move to next quarter.")
+                    continue
+                
                 # Create buffered area around kelp beds
                 kelp_polygons_buffered = []
                 for index in range(len(data["kelp"].time)):
@@ -165,17 +169,17 @@ def main():
                 data = utils.threshold_kelp(data, thresholds, kelp_polygons_buffered)
                 
                 # Save combined polygon and area
-                if save_rasters:
+                if debug:
                     encoding =  {"kelp": {"zlib": True, "complevel": 9, "grid_mapping": data["kelp"].encoding["grid_mapping"]}}
                     data["kelp"].to_netcdf(remote_raster_path / f'kelp_{date_range.replace("/","_")}.nc', format="NETCDF4", engine="netcdf4", encoding=encoding)
                 kelp_polygons = []
                 for index in range(len(data["kelp"].time)):
                     kelp_polygons.append(utils.polygon_from_raster(data["kelp"].isel(time=index)).dissolve())
-                if len(kelp_polygons) > 0:
-                    kelp_polygons = pandas.concat(kelp_polygons, ignore_index=True)
+                kelp_polygons = pandas.concat(kelp_polygons, ignore_index=True)
+                if kelp_polygons.empty:
+                    max_coverage_date = pandas.to_datetime(data.time.data[0]).strftime(date_format)
                 else:
-                    kelp_polygons = geopandas.GeoDataFrame(geometry=[], crs=data.rio.crs)
-                max_coverage_date = pandas.to_datetime(data.time.data[kelp_polygons.area.idxmax()]).strftime(date_format)
+                    max_coverage_date = pandas.to_datetime(data.time.data[kelp_polygons.area.idxmax()]).strftime(date_format)
                 kelp_polygons = kelp_polygons.dissolve()
                 kelp_polygons.to_file(raster_path / f"{date_range.replace('/', '_')}_kelp.gpkg", index=False)
 
@@ -198,8 +202,7 @@ def main():
                     kelp_info_individual["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
                     kelp_info_individual["ocean cloud percentage"].append(ocean_cloud_percentage[index])
                     
-
-                    if save_rasters: # Save each date data separately
+                    if debug: # Save each date data separately
                         encoding = {}
                         for key in data_i.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}

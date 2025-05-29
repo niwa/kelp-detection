@@ -40,7 +40,6 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
     
-    #test_sites_wsg = test_sites_wsg.iloc[7:]
     for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
@@ -57,13 +56,13 @@ def main():
         # Check if any results to post process
         if (raster_path / "info_quarterly.csv").exists():
             kelp_info = pandas.read_csv(raster_path / "info_quarterly.csv")
-            kelp_info = kelp_info[['date','file','area','dates considered', 'max coverage date']]
+            #kelp_info = kelp_info[['date','file','area','dates considered', 'max coverage date']]
         else:
             print(f"No data for site {site_name}. Skipping post processing.")
             continue
 
         # Save out overall presence absense map
-        if not (raster_path / "presence_absence_map.gpkg").exists() or True:
+        if not (raster_path / "presence_absence_map.gpkg").exists():
             print(f"\tWriting out presence absence for: {site_name}")
             kelp_polygons = []
             for file_name in kelp_info["file"].tolist():
@@ -81,7 +80,7 @@ def main():
         tile_ids = []
         percentages_2 = []
         percentages_98 = []
-        if len(list(remote_raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns or True:
+        if len(list(remote_raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns:
             for index, row in kelp_info.iterrows():
                 date_YYMMDD = row['max coverage date'] 
                 filename = remote_raster_path / f'rgb_{date_YYMMDD}.nc'
