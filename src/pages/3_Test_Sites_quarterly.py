@@ -158,7 +158,6 @@ def main():
         
         streamlit.session_state.quareterly_percentiles_3 = [(int(percentile_2), int(percentile_98)) 
                                                             for percentile_2, percentile_98 in zip(percentiles_2, percentiles_98)]
-        
         display_range = []
         for index in range(len(percentiles_2)):
             display_range.append(streamlit.slider(f'Satellite Tile {index + 1} default range: [{int(percentiles_2[index])}, {int(percentiles_98[index])}]',

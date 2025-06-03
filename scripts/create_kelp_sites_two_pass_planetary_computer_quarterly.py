@@ -59,7 +59,7 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
 
-    test_sites_wsg = test_sites_wsg.iloc[20:]
+    #test_sites_wsg = test_sites_wsg.iloc[20:]
     for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
