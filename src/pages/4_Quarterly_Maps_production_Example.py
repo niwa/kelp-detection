@@ -127,7 +127,7 @@ def main():
         if (raster_path / "info_quarterly.csv").exists():
             figure = plotly.subplots.make_subplots(specs=[[{"secondary_y": True}]]) # plotly.graph_objects.Figure()
             
-            figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["area"] * 100, mode="lines+markers", marker={'color':'blue'}, name="Area of Kelp Coverage [m^2]" ), secondary_y=True)
+            figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["area"], mode="lines+markers", marker={'color':'blue'}, name="Area of Kelp Coverage [m^2]" ), secondary_y=True)
             figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["proportion of max coverage"] * 100, mode="lines+markers", marker={'color':'red'}, name="Proportion of Max Coverage [%]" ), secondary_y=False)
             
             figure.update_layout(title="Proportion of max coverage by date across algorithm runs",
