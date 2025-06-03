@@ -59,7 +59,7 @@ def main():
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
 
-    test_sites_wsg = test_sites_wsg.iloc[17:]
+    test_sites_wsg = test_sites_wsg.iloc[20:]
     for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
@@ -67,7 +67,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites_quarterly" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}_quarterly"
+        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / "test_sites_quarterly" / f"{site_name}_quarterly"
         raster_path.mkdir(parents=True, exist_ok=True)
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
@@ -189,7 +189,8 @@ def main():
                 kelp_info["dates considered"].append(data.time.dt.strftime("%B %d, %Y").data)
                 kelp_info["max coverage date"].append(max_coverage_date)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info_quarterly.csv", index=False)
-                pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(remote_raster_path / "info_quarterly.csv", index=False)
+                if debug: 
+                    pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(remote_raster_path / "info_quarterly.csv", index=False)
 
                 for index in range(len(data["kelp"].time)):
 
@@ -208,12 +209,14 @@ def main():
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
                             data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                     pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(raster_path / "info.csv", index=False)
-                    pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(remote_raster_path / "info.csv", index=False)
+                    if debug: 
+                        pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(remote_raster_path / "info.csv", index=False)
 
         # Save results
         kelp_info_individual = pandas.DataFrame.from_dict(kelp_info_individual, orient='columns')
         kelp_info_individual.to_csv(raster_path / "info_individual.csv", index=False)
-        kelp_info_individual.to_csv(remote_raster_path / "info_individual.csv", index=False)
+        if debug: 
+            kelp_info_individual.to_csv(remote_raster_path / "info_individual.csv", index=False)
 
 if __name__ == '__main__':
     main()
