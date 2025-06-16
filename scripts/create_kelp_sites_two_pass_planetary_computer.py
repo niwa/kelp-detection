@@ -144,7 +144,7 @@ def main():
                 # Save each separately
                 for index in range(len(data["kelp"].time)):
                     
-                    filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                    filename = raster_path / f'{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}_kelp.gpkg'
 
                     data_i = data.isel(time=index)
                     kelp = data_i["kelp"].load()
@@ -152,6 +152,9 @@ def main():
                     kelp_info["file"].append(filename)
                     kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
                     kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
+                    
+                    kelp_polygons = utils.polygon_from_raster(kelp)
+                    kelp_polygons.to_file(filename, index=False)
                     
                     # Lookup STAC tile ID and recommended display range
                     tile_id = ""; percentile_2 = ""; percentile_98 = ""
@@ -170,6 +173,7 @@ def main():
                         encoding = {}
                         for key in data.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
+                        filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
                         data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
                 if debug:

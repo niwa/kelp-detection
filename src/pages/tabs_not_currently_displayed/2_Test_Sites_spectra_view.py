@@ -14,6 +14,8 @@ import branca
 import plotly.express
 import plotly.graph_objects
 import pyproj
+import leafmap
+import leafmap.foliumap
 
 
 #import holoviews
@@ -27,6 +29,48 @@ import utils
 import importlib
 importlib.reload(utils)
 
+def save_geojson_with_bytesio(dataframe):
+    #Function to return bytesIO of the geojson
+    bindary_stream = io.BytesIO()
+    dataframe.to_file(bindary_stream,  driver='GeoJSON')
+    return bindary_stream
+
+def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFrame, display_range: tuple):
+    
+    if streamlit.session_state.date_by_date_index != streamlit.session_state.date_by_date_map_index or streamlit.session_state.date_by_date_percentiles != display_range:
+        collection = "sentinel-2-l2a"
+        rgb_bands = utils.get_band_names_from_common(['red', 'green', 'blue'])
+        
+        date_index = streamlit.session_state.date_by_date_index[0]
+        # Either create map or just use the existing if no change to date
+        folium_map = leafmap.foliumap.Map() #location=center, zoom_start=13)
+
+        #land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
+        kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
+        if isinstance(kelp_info["file"].iloc[date_index], str) and kelp_info["file"].iloc[date_index] != "":
+            csv_file_path = pathlib.Path(kelp_info["file"].iloc[date_index])
+            streamlit.text(csv_file_path.name)
+            kelp_polygons = geopandas.read_file(csv_file_path)
+            kelp_polygons.explore(m=folium_map, color="magenta", style_kwds={"fillOpacity": 0}, name="Quarter Kelp Extents")
+        else:
+            streamlit.text("Anomalous date flagged in manual QA/QC. Excluded")
+
+        tile_ids = kelp_info["Satellite Tile IDs"].iloc[date_index].replace(",", "").strip(" ").split(" ")
+
+        #streamlit.text(f"Percentile 2: {percentiles_2}, Percentile 98: {percentiles_98}.")
+        for index, tile_id in enumerate(tile_ids):
+            folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc",
+                                      rescale=f"{display_range[0]},{display_range[1]}", fit_bounds=False)
+
+        bounds = kelp_total_extents.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())
+
+        folium.LayerControl().add_to(folium_map)
+
+        streamlit.session_state.date_by_date_map = folium_map
+        streamlit.session_state.date_by_date_map_index = streamlit.session_state.date_by_date_index
+    
+    return streamlit.session_state.date_by_date_map
 
 def main():
     """ Create / Update the geofabric summary information and display in a dashboard.
@@ -39,19 +83,31 @@ def main():
     )
     display_size = 700
     date_format = "%Y-%m-%d"
+    
+    if 'date_by_date_index' not in streamlit.session_state:
+        streamlit.session_state.date_by_date_index = []
+        streamlit.session_state.date_by_date_map_index = []
+        streamlit.session_state.date_by_date_prev_location = None
+        streamlit.session_state.date_by_date_percentiles = None
+    
+    
     data_path = pathlib.Path.cwd() / "data"
-    remote_raster_path = data_path # pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs")
     
     streamlit.button("Re-run")
     streamlit.title('Kelp Demo - click area plot to select raster display')
     
-    test_sites = geopandas.read_file(data_path / "vectors" / "test_sites_offshore_3km.gpkg") # "test_sites_offshore_3km_initial_list.gpkg"
+    test_sites = geopandas.read_file(data_path / "vectors" / "test_sites_offshore_3km.gpkg")
     
     location = streamlit.selectbox("Select tile to display", (test_sites["name"]), index=0,)
+    
+    if location != streamlit.session_state.date_by_date_prev_location:
+        streamlit.session_state.date_by_date_prev_location = location
+        streamlit.session_state.date_by_date_index = streamlit.session_state.date_by_date_map_index = []
     
     # Define the region
     raster_path = data_path / "rasters" / "test_sites" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
+    kelp_total_extents = geopandas.read_file(raster_path / "presence_absence_map.gpkg")
     
     if 'xy' not in streamlit.session_state:
         streamlit.session_state['xy'] = []
@@ -64,7 +120,7 @@ def main():
     col1, col2 = streamlit.columns([1, 5])
     with col1:
         if (raster_path / "info.csv").exists():
-            streamlit.dataframe(kelp_info[["date", "area", "ocean cloud percentage"]])
+            streamlit.dataframe(kelp_info[["date", "area", "ocean cloud percentage", "proportion of max coverage"]])
         else:
             streamlit.markdown("No info.csv. Older runs displayed, but raster view of selected date is not supported")
     with col2:
@@ -85,8 +141,30 @@ def main():
         event = streamlit.plotly_chart(figure, on_select="rerun")
         
     selection = event["selection"]["point_indices"]
+    if len(selection) > 0:
+        streamlit.session_state.date_by_date_index = selection
     
-    if len(selection) and (raster_path / "info.csv").exists():
+    if len(streamlit.session_state.date_by_date_index) and (raster_path / "info.csv").exists():
+        date_index = streamlit.session_state.date_by_date_index[0]
+        streamlit.subheader(f"Plot {kelp_info["date"].iloc[date_index]}.")
+        streamlit.caption("May take time to load...")
+        
+        percentiles_2 = kelp_info["Percentile 2"].iloc[date_index].replace(",", "").strip(" ").split(" ")
+        percentiles_98 = kelp_info["Percentile 98"].iloc[date_index].replace(",", "").strip(" ").split(" ")
+        percentiles_2 = [int(percentile_2) for percentile_2 in percentiles_2]
+        percentiles_98 = [int(percentile_98) for percentile_98 in percentiles_98]
+        
+        streamlit.session_state.date_by_date_percentiles = (int(numpy.array(percentiles_2).mean()), int(numpy.array(percentiles_98).mean()))
+        
+        display_range = streamlit.slider(f'Satellite Tile(s) default range: [{streamlit.session_state.date_by_date_percentiles[0]}, {streamlit.session_state.date_by_date_percentiles[1]}]',
+                                                  0, 10000, streamlit.session_state.date_by_date_percentiles)
+        
+        folium_map = get_map(kelp_total_extents, kelp_info, display_range)
+        streamlit_folium.folium_static(folium_map, width=900)
+    
+    ################
+    
+    '''if len(selection) and (raster_path / "info.csv").exists():
         csv_file_path = pathlib.Path(kelp_info["file"].iloc[selection[0]])
         data_file = csv_file_path # remote_raster_path / csv_file_path.parent.name / csv_file_path.name
         streamlit.subheader(f"Plot {kelp_info["date"].iloc[selection[0]]} with {kelp_info["ocean cloud percentage"].iloc[selection[0]]:.2f}% ocean cloud")
@@ -179,7 +257,7 @@ def main():
                                               data=pandas.DataFrame(data=spectra_all_dates).to_csv().encode("utf-8"),
                                               file_name=f"spectra_all_dates_from_dashboard_{location}.csv",
                                               mime="text/csv",
-                                         )
+                                         )'''
 
 
 if __name__ == '__main__':
