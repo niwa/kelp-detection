@@ -47,7 +47,7 @@ def main():
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
         #remote_raster_path = raster_path
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
+        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ORC22502_outputs") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
         remote_raster_path.mkdir(parents=True, exist_ok=True)
     
@@ -139,4 +139,5 @@ def main():
         kelp_info.to_csv(remote_raster_path / "info.csv", index=False)
 
 if __name__ == '__main__':
+
     main()
