@@ -198,8 +198,8 @@ def create_test_sites(distance_offshore = 4_000):
         kelp_reef = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
     
         # Kakanui Point
-        y0 = 4971542.06309853; x0 = 1434490.7526933695
-        y1 = 4999203.149955602; x1 = 1436856.6943287323
+        y0 = 4971519.427449696; x0 = 1434407.8223572364 
+        y1 = 4969216.051752357; x1 = 1436511.46682755
         kakanui_point = shapely.geometry.Polygon([[x0,y0], [x1,y0], [x1,y1], [x0,y1]])
 
         # Waitaki
