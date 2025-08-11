@@ -1,3 +1,4 @@
+
 import pystac_client
 import pystac
 import odc.stac
@@ -19,7 +20,8 @@ def main():
     """ Create site datasets.
     """
     
-    test_sites_andra_and_leigh_wsg_84 = utils.create_test_sites(distance_offshore = 3_000)
+    test_sites_andra_and_leigh_wsg_84 = utils.create_large_ORC_sites(distance_offshore = 3_000)
+    #test_sites_andra_and_leigh_wsg_84 = utils.create_test_sites(distance_offshore = 3_000)
     #test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
     test_sites_wsg = test_sites_andra_and_leigh_wsg_84.to_crs(utils.CRS_WSG)
     land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
