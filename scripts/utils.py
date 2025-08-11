@@ -272,9 +272,49 @@ def create_test_sites(distance_offshore = 4_000):
         test_sites = geopandas.GeoDataFrame({"name": ["Orero_Point", "Kelp_Reef", "Kakanui_Point", "Waitaki", "Matakaea", "Bobbys_Head", "South_Beach", "Waikouaiti", "Karitane", "Warrington", "Taieri_Mouth", "Taieri_Beach", "Smiths_Beach", " Kaka_Point", "Campbell_Point", "Catlins_River"], 
                                                "geometry": [orere_point, kelp_reef, kakanui_point, waitaki, matakaea, bobbys_head, south_beach, waikouaiti, karitane, warrington, taieri_mouth, taieri_beach, smiths_beach, kaka_point, campbell_point, catlins_river]}, crs=CRS)
 
-        # test_sites = geopandas.GeoDataFrame({"name": ["Motunau", "Marlborough", "Chatham"], 
-        #                                         "geometry": [motunau, marlborough, chatham]}, crs=CRS)
 
+def create_large_ORC_sites(distance_offshore = 4_000):
+
+    buffer_label = (str(int(distance_offshore/1000)) if distance_offshore%1000 == 0 else f'{distance_offshore/1000:2.1f}'.replace('.', '_')) + "km"
+
+    ORC_test_sites_path = DATA_PATH / "vectors" / f"ORC__large_test_sites_offshore_{buffer_label}.gpkg"
+    if not ORC_test_sites_path.exists():
+
+        #Waitaki to Moeraki
+        y0 = 5027497.93705843; x0 = 1448258.9844273867
+        y1 = 5016217.806616828; x1 = 1485708.4716971898 
+        y2 = 4963877.484088166; x2 = 1463617.8641267184  
+        y3 = 4975810.97605095; x3 = 1425886.4105792795
+        y0 = 5027497.93705843; x0 = 1448258.9844273867
+        moeraki = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3], [x0,y0]])
+            
+            # Moeraki to Warrington
+        y0 = 4975810.97605095; x0 = 1425886.4105792795 
+        y1 = 4963595.501717665; x1 = 1463403.0498575955 
+        y2 = 4921478.962750298; x2 = 1444278.7157048723  
+        y3 = 4933478.193998714; x3 = 1404643.4612364506
+        y0 = 4975810.97605095; x0 = 1425886.4105792795
+        warrington = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3], [x0,y0]])
+        
+            # Green Island to Clutha
+        y0 = 4911408.471964334; x0 = 1395180.8297809367 
+        y1 = 4892192.3165009795; x1 = 1429733.0005045957
+        y2 = 4837205.055714451; x2 = 1384582.7430049093
+        y3 = 4863652.384730164; x3 = 1352441.5193394553
+        y0 = 4911408.471964334; x0 = 1395180.8297809367 
+        clutha = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3], [x0,y0]])
+
+            # Clutha to Catlins Estuary
+        y0 = 4863598.883557524; x0 = 1352283.5136012034 
+        y1 = 4836795.571962107; x1 = 1384231.71884198 
+        y2 = 4797698.805998405; x2 = 1342611.257074136 
+        y3 = 4828125.662979509; x3 = 1310108.7109484668
+        y0 = 4863598.883557524; x0 = 1352283.5136012034
+        catlins = shapely.geometry.Polygon([[x0,y0], [x1,y1], [x2,y2], [x3,y3], [x0,y0]])
+            
+
+        ORC_test_sites = geopandas.GeoDataFrame({"name": ["Waitaki_Moeraki", "Moeraki_Warrington", "Green_Clutha", "Clutha_Catlins"], 
+                                               "geometry": [moeraki, warrington, clutha, catlins]}, crs='EPSG:2193')
         # clip to max distance offshore
         buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
         if not buffer_path.exists():
@@ -290,12 +330,12 @@ def create_test_sites(distance_offshore = 4_000):
     
             offshore_buffer = geopandas.read_file(buffer_path)
 
-        test_sites = test_sites.clip(offshore_buffer.dissolve().geometry.loc[0])
-        test_sites.to_file(test_sites_path)
+        ORC_test_sites = ORC_test_sites.clip(offshore_buffer.dissolve().geometry.loc[0])
+        ORC_test_sites.to_file(ORC_test_sites_path)
     else:
-        test_sites = geopandas.read_file(test_sites_path)
+        ORC_test_sites = geopandas.read_file(ORC_test_sites_path)
 
-    return test_sites
+    return ORC_test_sites
     
 
 def update_raster_defaults(raster):
