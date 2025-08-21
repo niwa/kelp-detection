@@ -56,10 +56,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        if debug:
-            remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI - convex hull to allow search
         site_bbox = row.geometry.bounds
@@ -173,17 +170,17 @@ def main():
                         encoding = {}
                         for key in data.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
-                        filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                        filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
                         data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
                 if debug:
-                    pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(remote_raster_path / "info.csv", index=False)
+                    pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
 
         # Save results
         kelp_info = pandas.DataFrame.from_dict(kelp_info, orient='columns')
         kelp_info.to_csv(raster_path / "info.csv", index=False)
         if debug:
-            kelp_info.to_csv(remote_raster_path / "info.csv", index=False)
+            kelp_info.to_csv(raster_path / "info.csv", index=False)
 
 if __name__ == '__main__':
     main()

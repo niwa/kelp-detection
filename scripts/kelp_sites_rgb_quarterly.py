@@ -45,9 +45,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites_quarterly" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites_quarterly") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI
         site_bbox = row.geometry.bounds
@@ -80,10 +78,10 @@ def main():
         tile_ids = []
         percentages_2 = []
         percentages_98 = []
-        if len(list(remote_raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns:
+        if len(list(raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns:
             for index, row in kelp_info.iterrows():
                 date_YYMMDD = row['max coverage date'] 
-                filename = remote_raster_path / f'rgb_{date_YYMMDD}.nc'
+                filename = raster_path / f'rgb_{date_YYMMDD}.nc'
 
                 # run pystac client search to see available dataset
                 print(f"\tGet Tile(s) ID: {date_YYMMDD}")

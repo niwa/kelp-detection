@@ -55,9 +55,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        #remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        #remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI
         site_bbox = row.geometry.bounds
