@@ -155,7 +155,7 @@ def main():
                     
                     # Lookup STAC tile ID and recommended display range
                     tile_id = ""; percentile_2 = ""; percentile_98 = ""
-                    search = client.search(collections=catalogue["collections"], bbox=site_bbox, datetime=date_YYMMDD, query=filters)
+                    search = client.search(collections=catalogue["collections"], bbox=site_bbox, datetime=month_YYMM, query=filters)
                     for item in search.items():
                         tile_id += f"{item.id}, "
                         stats=leafmap.stac_stats(collection=catalogue["collections"][0], item=item.id, titiler_endpoint="pc", assets=rgb_bands)
