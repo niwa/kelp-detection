@@ -127,7 +127,7 @@ def main():
         figure = plotly.graph_objects.Figure()
         area_columns = []
         for older_info_file in raster_path.glob("info_*.csv"):
-            name = f"{older_info_file.stem.replace('area_', '').replace("info_", "")}"
+            name = f"{older_info_file.stem.replace('area_', '').replace('info_', '')}"
             older_kelp_info = pandas.read_csv(older_info_file)
             older_kelp_info.drop(columns=["Unnamed: 0", "file", "ocean cloud percentage"], inplace=True, errors="ignore")
             older_kelp_info.rename(inplace=True, columns={"area": name})
@@ -151,7 +151,7 @@ def main():
     
     if len(streamlit.session_state.date_by_date_index) and (raster_path / "info.csv").exists():
         date_index = streamlit.session_state.date_by_date_index[0]
-        streamlit.subheader(f"Plot {kelp_info["date"].iloc[date_index]}.")
+        streamlit.subheader(f"Plot {kelp_info['date'].iloc[date_index]}.")
         streamlit.caption("May take time to load...")
         
         percentiles_2 = kelp_info["Percentile 2"].iloc[date_index].replace(",", "").strip(" ").split(" ")
