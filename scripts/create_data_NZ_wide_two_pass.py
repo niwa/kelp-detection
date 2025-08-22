@@ -159,10 +159,10 @@ def main():
                     for item in search.items():
                         tile_ids += f"{item.id}, "
                         stats=leafmap.stac_stats(collection=catalogue["collections"][0], item=item.id, titiler_endpoint="pc", assets=rgb_bands)
-                        percentage_2_i = []; percentage_98_i = []
+                        percentile_2_i = []; percentile_98_i = []
                         for key, value in stats.items():
-                            percentage_2_i.append(value['percentile_2']); percentile_98_i.append(value['percentile_98'])
-                        percentile_2_i = numpy.array(percentile_2_i).mean(); percentile_98_i = numpy.array(percentage_98_i).mean()
+                            percentile_2_i.append(value['percentile_2']); percentile_98_i.append(value['percentile_98'])
+                        percentile_2_i = numpy.array(percentile_2_i).mean(); percentile_98_i = numpy.array(percentile_98_i).mean()
                         percentile_2 += f"{round(percentile_2_i)}, "; percentile_98 += f"{round(percentile_98_i)}, "
                     kelp_info["Satellite Tile IDs"] = tile_ids; kelp_info["Percentile 2"] = percentile_2; kelp_info["Percentile 98"] = percentile_98
                     
