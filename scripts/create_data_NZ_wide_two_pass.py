@@ -1,31 +1,31 @@
 import pystac_client
 import leafmap
-import pystac
 import odc.stac
-import rioxarray
-import xarray
-import pathlib
 import pandas
 import geopandas
-import shapely
 import numpy
-import dotenv
 import datetime
 import planetary_computer
-import os
-import copy
-import geoapis.vector
 import utils
 
 def main():
-    """ Create site datasets.
+    """ Runs through 'NZ_wide' sites then across date range and for dates
+      with satellite imagery meeting cloud cover criteria it then runs a two
+      pass algorithm for kelp detection with built in anomaly detection.
+
+      Each date with kelp saves kelp extents as a GeoPackage and also adds
+      row to the info.csv for each site with date specific information 
+      (including satellite tile information).
+
+      Note this requires certain vector information which is created the
+      first time the script is run. See utils.create_test_sites() for more
+      details.
     """
     
     debug = False
     
     test_sites = utils.create_test_sites(distance_offshore = 3_000)
     test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
-    land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
                  "collections": ["sentinel-2-l2a"]}
