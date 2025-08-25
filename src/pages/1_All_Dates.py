@@ -125,7 +125,10 @@ def main():
     col1, col2 = streamlit.columns([1, 5])
     with col1:
         if (raster_path / "info.csv").exists():
-            streamlit.dataframe(kelp_info[["date", "area", "ocean cloud percentage", "proportion of max coverage"]])
+            display_columns = ["date", "area", "ocean cloud percentage"]
+            if "proportion of max coverage" in kelp_info.columns:
+                display_columns.append("proportion of max coverage")
+            streamlit.dataframe(kelp_info[display_columns])
         else:
             streamlit.markdown("No info.csv. Older runs displayed, but raster view of selected date is not supported")
     with col2:
@@ -143,7 +146,8 @@ def main():
         if (raster_path / "info.csv").exists():
             figure = plotly.subplots.make_subplots(specs=[[{"secondary_y": True}]])
             figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["area"], mode="lines+markers", marker={'color':'blue'}, name="Area [m^2]" ), secondary_y=True)
-            figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["proportion of max coverage"] * 100, mode="lines+markers", marker={'color':'red'}, name="Proportion of Max Coverage [%]" ), secondary_y=False)
+            if "proportion of max coverage" in kelp_info.columns:
+                figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["proportion of max coverage"] * 100, mode="lines+markers", marker={'color':'red'}, name="Proportion of Max Coverage [%]" ), secondary_y=False)
             
             figure.update_layout(title="Proportion of max coverage by date across algorithm runs",
                                  xaxis_title="date", yaxis2_title="Area [m^2]",

@@ -64,7 +64,7 @@ def main():
         # Check if any results to post process
         if (raster_path / "info.csv").exists():
             kelp_info = pandas.read_csv(raster_path / "info.csv")
-            #kelp_info = kelp_info[['date','file','area','dates considered', 'max coverage date']]
+            #kelp_info = kelp_info[['date', 'file', 'area', 'ocean cloud percentage', "Satellite Tile IDs", "Percentile 2", "Percentile 98"]] # remove any summary info previously created
         else:
             print(f"No data for site {site_name}. Skipping post processing.")
             continue
