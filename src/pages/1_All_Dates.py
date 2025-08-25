@@ -46,7 +46,10 @@ def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFr
         folium_map = leafmap.foliumap.Map() #location=center, zoom_start=13)
 
         #land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
-        kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
+        if kelp_total_extents is not None:
+            kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
+        else:
+            streamlit.text("`summarise_NZ_wide_info.py` not yet run. Please run to create `presence_absence_map.gpkg`")
         if isinstance(kelp_info["file"].iloc[date_index], str) and kelp_info["file"].iloc[date_index] != "":
             csv_file_path = pathlib.Path(kelp_info["file"].iloc[date_index])
             kelp_polygons = geopandas.read_file(csv_file_path)
@@ -106,7 +109,10 @@ def main():
     # Define the region
     raster_path = data_path / "rasters" / "test_sites" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
-    kelp_total_extents = geopandas.read_file(raster_path / "presence_absence_map.gpkg")
+    if (raster_path / "presence_absence_map.gpkg").exists():
+        kelp_total_extents = geopandas.read_file(raster_path / "presence_absence_map.gpkg")
+    else:
+        kelp_total_extents = None
     
     if 'xy' not in streamlit.session_state:
         streamlit.session_state['xy'] = []
