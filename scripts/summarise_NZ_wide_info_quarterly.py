@@ -123,7 +123,7 @@ def main():
             kelp_info["Satellite Tile IDs"] = tile_ids
             kelp_info["Percentile 2"] = percentages_2
             kelp_info["Percentile 98"] = percentages_98
-            kelp_info.to_csv(raster_path / "info_quarterly.csv"☻)
+            kelp_info.to_csv(raster_path / "info_quarterly.csv")
 
 
 if __name__ == '__main__':
