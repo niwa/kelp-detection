@@ -20,13 +20,18 @@ Instructions for data update.
 
 # Running Kelp Dashboard
 
-A  dashboard for displaying Kelp extents across dates used for QA/QC and general review.
+A  dashboard for displaying Kelp extents across dates used for QA/QC and general review. 
 
-# Usage - Windows locally
+We do this using Streamlit. The code is located under the `src` folder. 
+
+## Usage - Windows locally
+1. Open a miniconda terminal and activate an environment with `streamlit` and `streamlit-folium` added.
+2. Navigate to the repository main folder
+3. execute `streamlit run src/Home.py`
+4. Follow the printed ` Local URL`.
 
 
-
-# Usage - LINUX on HPC
+## Usage - LINUX on HPC
 Either use `launch_app.sh` directly or use the code within to lauch using the commandline.
 
 `./launch_app.sh`
