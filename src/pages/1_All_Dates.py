@@ -13,6 +13,7 @@ import odc.stac
 import branca
 import plotly.express
 import plotly.graph_objects
+import plotly.subplots
 import pyproj
 import leafmap
 import leafmap.foliumap
@@ -46,7 +47,10 @@ def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFr
         folium_map = leafmap.foliumap.Map() #location=center, zoom_start=13)
 
         #land.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="land")
-        kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
+        if kelp_total_extents is not None:
+            kelp_total_extents.explore(m=folium_map, color="blue", style_kwds={"fillOpacity": 0}, name="Satellite record Kelp Extents")
+        else:
+            streamlit.text("`summarise_NZ_wide_info.py` not yet run. Please run to create `presence_absence_map.gpkg`")
         if isinstance(kelp_info["file"].iloc[date_index], str) and kelp_info["file"].iloc[date_index] != "":
             csv_file_path = pathlib.Path(kelp_info["file"].iloc[date_index])
             kelp_polygons = geopandas.read_file(csv_file_path)
@@ -61,7 +65,10 @@ def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFr
             folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc",
                                       rescale=f"{display_range[0]},{display_range[1]}", fit_bounds=False)
 
-        bounds = kelp_total_extents.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        if kelp_total_extents is not None:
+            bounds = kelp_total_extents.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        else:
+            bounds = kelp_polygons.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
         folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())
 
         folium.LayerControl().add_to(folium_map)
@@ -106,7 +113,10 @@ def main():
     # Define the region
     raster_path = data_path / "rasters" / "test_sites" / f"{location}"
     land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
-    kelp_total_extents = geopandas.read_file(raster_path / "presence_absence_map.gpkg")
+    if (raster_path / "presence_absence_map.gpkg").exists():
+        kelp_total_extents = geopandas.read_file(raster_path / "presence_absence_map.gpkg")
+    else:
+        kelp_total_extents = None
     
     if 'xy' not in streamlit.session_state:
         streamlit.session_state['xy'] = []
@@ -119,7 +129,10 @@ def main():
     col1, col2 = streamlit.columns([1, 5])
     with col1:
         if (raster_path / "info.csv").exists():
-            streamlit.dataframe(kelp_info[["date", "area", "ocean cloud percentage", "proportion of max coverage"]])
+            display_columns = ["date", "area", "ocean cloud percentage"]
+            if "proportion of max coverage" in kelp_info.columns:
+                display_columns.append("proportion of max coverage")
+            streamlit.dataframe(kelp_info[display_columns])
         else:
             streamlit.markdown("No info.csv. Older runs displayed, but raster view of selected date is not supported")
     with col2:
@@ -127,7 +140,7 @@ def main():
         figure = plotly.graph_objects.Figure()
         area_columns = []
         for older_info_file in raster_path.glob("info_*.csv"):
-            name = f"{older_info_file.stem.replace('area_', '').replace("info_", "")}"
+            name = f"{older_info_file.stem.replace('area_', '').replace('info_', '')}"
             older_kelp_info = pandas.read_csv(older_info_file)
             older_kelp_info.drop(columns=["Unnamed: 0", "file", "ocean cloud percentage"], inplace=True, errors="ignore")
             older_kelp_info.rename(inplace=True, columns={"area": name})
@@ -137,7 +150,8 @@ def main():
         if (raster_path / "info.csv").exists():
             figure = plotly.subplots.make_subplots(specs=[[{"secondary_y": True}]])
             figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["area"], mode="lines+markers", marker={'color':'blue'}, name="Area [m^2]" ), secondary_y=True)
-            figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["proportion of max coverage"] * 100, mode="lines+markers", marker={'color':'red'}, name="Proportion of Max Coverage [%]" ), secondary_y=False)
+            if "proportion of max coverage" in kelp_info.columns:
+                figure.add_trace(plotly.graph_objects.Scatter(x=kelp_info["date"], y=kelp_info["proportion of max coverage"] * 100, mode="lines+markers", marker={'color':'red'}, name="Proportion of Max Coverage [%]" ), secondary_y=False)
             
             figure.update_layout(title="Proportion of max coverage by date across algorithm runs",
                                  xaxis_title="date", yaxis2_title="Area [m^2]",
@@ -151,7 +165,7 @@ def main():
     
     if len(streamlit.session_state.date_by_date_index) and (raster_path / "info.csv").exists():
         date_index = streamlit.session_state.date_by_date_index[0]
-        streamlit.subheader(f"Plot {kelp_info["date"].iloc[date_index]}.")
+        streamlit.subheader(f"Plot {kelp_info['date'].iloc[date_index]}.")
         streamlit.caption("May take time to load...")
         
         percentiles_2 = kelp_info["Percentile 2"].iloc[date_index].replace(",", "").strip(" ").split(" ")

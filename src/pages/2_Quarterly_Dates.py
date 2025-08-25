@@ -141,7 +141,7 @@ def main():
     
     if len(streamlit.session_state.quarterly_index) and (raster_path / "info_quarterly.csv").exists():
         date_index = streamlit.session_state.quarterly_index[0]
-        streamlit.subheader(f"Plot quarter {kelp_info["date"].iloc[date_index]} calculated from dates {kelp_info["dates considered"].iloc[date_index]}.")
+        streamlit.subheader(f"Plot quarter {kelp_info['date'].iloc[date_index]} calculated from dates {kelp_info['dates considered'].iloc[date_index]}.")
         streamlit.caption("May take time to load...")
         
         percentiles_2 = kelp_info["Percentile 2"].iloc[date_index].replace(",", "").strip(" ").split(" ")

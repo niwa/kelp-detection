@@ -16,6 +16,7 @@ import os
 import copy
 import geoapis.vector
 import utils
+import json
 
 def main():
     """ Create site datasets.
@@ -33,30 +34,37 @@ def main():
 
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") 
     
+    # Read in date to ignore file
+    if (pathlib.Path.cwd() / "sites_dates_to_ignore.json").exists:
+        with open(pathlib.Path.cwd() / "sites_dates_to_ignore.json", "r") as file_pointer:
+            site_dates_to_ignore = json.load(file_pointer)
+    else:
+        site_dates_to_ignore = {}
+    
     filter_cloud_percentage = 30
     rgb_bands = utils.get_band_names_from_common(["red", "green", "blue"])
 
     # use publically available stac link such as
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
     client = pystac_client.Client.open(catalogue["url"], modifier=planetary_computer.sign_inplace) 
-    
+
     for site_index, row in test_sites_wsg.iterrows(): 
         site_name = row['name']
         
+        dates_to_ignore = site_dates_to_ignore[site_name] if site_name in site_dates_to_ignore.keys() else {}
+        
         print(f"Test site: {site_name}") 
-        raster_path = utils.DATA_PATH / "rasters" / "test_sites_quarterly" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites_quarterly") / f"{site_name}"
+        raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI
         site_bbox = row.geometry.bounds
         filters = {"eo:cloud_cover":{"lt":filter_cloud_percentage}} 
         
         # Check if any results to post process
-        if (raster_path / "info_quarterly.csv").exists():
-            kelp_info = pandas.read_csv(raster_path / "info_quarterly.csv")
-            #kelp_info = kelp_info[['date','file','area','dates considered', 'max coverage date']]
+        if (raster_path / "info.csv").exists():
+            kelp_info = pandas.read_csv(raster_path / "info.csv")
+            #kelp_info = kelp_info[['date', 'file', 'area', 'ocean cloud percentage', "Satellite Tile IDs", "Percentile 2", "Percentile 98"]] # remove any summary info previously created
         else:
             print(f"No data for site {site_name}. Skipping post processing.")
             continue
@@ -64,14 +72,27 @@ def main():
         # Save out overall presence absense map
         if not (raster_path / "presence_absence_map.gpkg").exists():
             print(f"\tWriting out presence absence for: {site_name}")
-            kelp_polygons = []
+            kelp_polygons = []; file_names = []
             for file_name in kelp_info["file"].tolist():
-                kelp_polygons.append(
+                file_name = pathlib.Path(file_name)
+                file_name = raster_path / file_name.name
+                date = file_name.stem.replace('data_','')
+                if date in dates_to_ignore:
+                    file_names.append("")
+                    continue
+                
+                kelp = rioxarray.rioxarray.open_rasterio(file_name, chunks=True).squeeze("band", drop=True)["kelp"]
+                kelp_polygon = utils.polygon_from_raster(kelp).dissolve()
+                kelp_polygon.to_file(file_name.parent / f"{date}_kelp.gpkg")
+                file_names.append(file_name.parent / f"{date}_kelp.gpkg")
+                kelp_polygons.append(kelp_polygon.to_crs(utils.CRS))
+                '''#kelp_polygons.append(
                     geopandas.read_file(raster_path / pathlib.Path(file_name).name).to_crs(utils.CRS)
-                )
+                )'''
             kelp_polygons = pandas.concat(kelp_polygons).dissolve()
             kelp_info["proportion of max coverage"] = kelp_info["area"] / kelp_polygons.area.sum()
-            kelp_info.to_csv(raster_path / "info_quarterly.csv", index=False)
+            kelp_info["file"] = file_names
+            kelp_info.to_csv(raster_path / "info.csv", index=False)
             kelp_polygons.to_file(raster_path / "presence_absence_map.gpkg")
         else:
             print(f"\tSkip presence absence for: {site_name} - already exists")
@@ -80,10 +101,9 @@ def main():
         tile_ids = []
         percentages_2 = []
         percentages_98 = []
-        if len(list(remote_raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns:
+        if "Satellite Tile IDs" not in kelp_info.columns:
             for index, row in kelp_info.iterrows():
-                date_YYMMDD = row['max coverage date'] 
-                filename = remote_raster_path / f'rgb_{date_YYMMDD}.nc'
+                date_YYMMDD = row['date'] 
 
                 # run pystac client search to see available dataset
                 print(f"\tGet Tile(s) ID: {date_YYMMDD}")
@@ -106,26 +126,11 @@ def main():
                     percentage_2 += f"{round(percentage_2_i)}, "; percentage_98 += f"{round(percentage_98_i)}, "
                 tile_ids.append(tile_id); percentages_2.append(percentage_2); percentages_98.append(percentage_98); 
 
-                if filename.exists():
-                    # Both already run - skip to the next date
-                    print(f"\tSkip RGB for date: {date_YYMMDD} - already exists")
-                    continue
-                print(f"\tCreate RGB for date: {date_YYMMDD}")
-                data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
-                                    resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
-                roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
-
-                rgb = utils.normalise_rgb(data.isel(time=0), rgb_bands)
-                utils.update_raster_defaults(rgb)
-                rgb = rgb.to_array("rgb", name="Satellite RGB").rio.clip(roi.geometry)
-                encoding = {"Satellite RGB": {"zlib": True, "complevel": 9, "grid_mapping": data[rgb_bands[0]].encoding["grid_mapping"]}}
-                rgb.load()
-                rgb.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
             # add tile id's and display ranges to the CSV
             kelp_info["Satellite Tile IDs"] = tile_ids
             kelp_info["Percentile 2"] = percentages_2
             kelp_info["Percentile 98"] = percentages_98
-            kelp_info.to_csv(raster_path / "info_quarterly.csv"☻)
+            kelp_info.to_csv(raster_path / "info.csv")
 
 
 if __name__ == '__main__':
