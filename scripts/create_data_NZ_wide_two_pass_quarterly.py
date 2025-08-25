@@ -85,10 +85,10 @@ def main():
             kelp_info = {"date": [], "file": [], "area": [], "dates considered": [], "max coverage date": []}
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
         
-        if (raster_path / "info_individual.csv").exists():
-            kelp_info_individual = pandas.read_csv(raster_path / "info_individual.csv").to_dict()
+        if (raster_path / "info_all_dates.csv").exists():
+            kelp_info_all_dates = pandas.read_csv(raster_path / "info_all_dates.csv").to_dict()
         else:
-            kelp_info_individual = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
+            kelp_info_all_dates = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
 
         years = list(range(2016, 2025)) # 2016, 2025
         for year in years:
@@ -195,21 +195,21 @@ def main():
 
                     data_i = data.isel(time=index)
                     kelp = data_i["kelp"].load()
-                    kelp_info_individual["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
-                    kelp_info_individual["file"].append(filename)
-                    kelp_info_individual["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
-                    kelp_info_individual["ocean cloud percentage"].append(ocean_cloud_percentage[index])
+                    kelp_info_all_dates["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
+                    kelp_info_all_dates["file"].append(filename)
+                    kelp_info_all_dates["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
+                    kelp_info_all_dates["ocean cloud percentage"].append(ocean_cloud_percentage[index])
                     
                     if debug: # Save each date data separately
                         encoding = {}
                         for key in data_i.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
                             data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
-                    pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(raster_path / "info.csv", index=False)
+                    pandas.DataFrame.from_dict(kelp_info_all_dates, orient='columns').to_csv(raster_path / "info_all_dates.csv", index=False)
 
         # Save results
-        kelp_info_individual = pandas.DataFrame.from_dict(kelp_info_individual, orient='columns')
-        kelp_info_individual.to_csv(raster_path / "info_individual.csv", index=False)
+        kelp_info_all_dates = pandas.DataFrame.from_dict(kelp_info_all_dates, orient='columns')
+        kelp_info_all_dates.to_csv(raster_path / "info_all_dates.csv", index=False)
 
 if __name__ == '__main__':
     main()
