@@ -13,6 +13,7 @@ import odc.stac
 import branca
 import plotly.express
 import plotly.graph_objects
+import plotly.subplots
 import pyproj
 import leafmap
 import leafmap.foliumap
