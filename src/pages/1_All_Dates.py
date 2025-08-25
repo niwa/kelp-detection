@@ -65,7 +65,10 @@ def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFr
             folium_map.add_stac_layer(collection=collection, item=tile_id, assets=rgb_bands, name="RGB", titiler_endpoint="pc",
                                       rescale=f"{display_range[0]},{display_range[1]}", fit_bounds=False)
 
-        bounds = kelp_total_extents.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        if kelp_total_extents is not None:
+            bounds = kelp_total_extents.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
+        else:
+            bounds = kelp_polygons.to_crs(utils.CRS_WSG).total_bounds  # [minx, miny, maxx, maxy]
         folium_map.fit_bounds(numpy.flip(numpy.reshape(bounds, (2,2)), axis = 1).tolist())
 
         folium.LayerControl().add_to(folium_map)
