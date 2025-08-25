@@ -80,15 +80,9 @@ def main():
                 if date in dates_to_ignore:
                     file_names.append("")
                     continue
-                
-                kelp = rioxarray.rioxarray.open_rasterio(file_name, chunks=True).squeeze("band", drop=True)["kelp"]
-                kelp_polygon = utils.polygon_from_raster(kelp).dissolve()
-                kelp_polygon.to_file(file_name.parent / f"{date}_kelp.gpkg")
-                file_names.append(file_name.parent / f"{date}_kelp.gpkg")
-                kelp_polygons.append(kelp_polygon.to_crs(utils.CRS))
-                '''#kelp_polygons.append(
-                    geopandas.read_file(raster_path / pathlib.Path(file_name).name).to_crs(utils.CRS)
-                )'''
+                kelp_polygons.append(
+                    geopandas.read_file(file_name).to_crs(utils.CRS)
+                )
             kelp_polygons = pandas.concat(kelp_polygons).dissolve()
             kelp_info["proportion of max coverage"] = kelp_info["area"] / kelp_polygons.area.sum()
             kelp_info["file"] = file_names
