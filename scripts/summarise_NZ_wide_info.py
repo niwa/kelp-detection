@@ -80,6 +80,7 @@ def main():
                 if date in dates_to_ignore:
                     file_names.append("")
                     continue
+                file_names.append(file_name)
                 kelp_polygons.append(
                     geopandas.read_file(file_name).to_crs(utils.CRS)
                 )
