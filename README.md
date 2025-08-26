@@ -12,10 +12,12 @@ These scripts expect the current working directory to be relative to the scripts
 
 Instructions for data update.
 1. Create kelp detections all dates - run `create_data_NZ_wide_two_pass.py`
-2. Review 'All Dates' tab in the streamlit app for any anomalous dates to ignore. 
-3. Update `sites_dates_to_ignore.json` with dates to ignore. <span style="color: red;">IMPORTANT</span> - date format is YYYY-MM-DD
-4. Create kelp detections quarterly averaged - `create_data_NZ_wide_two_pass_quarterly.py`
-5. Create site-wide presence-absence maps & summary info - run `summarise_NZ_wide_info.py` and `summarise_NZ_wide_info_quarterly.py`
+2. Launch kelp dashboard if not already running (see Running Kelp Dashboard section below)
+3. Review 'All Dates' tab in the kelp dashboard for any anomalous dates to ignore. 
+4. Update `sites_dates_to_ignore.json` with dates to ignore. <span style="color: red;">IMPORTANT</span> - date format is YYYY-MM-DD
+5. Create kelp detections quarterly averaged - `create_data_NZ_wide_two_pass_quarterly.py`
+6. Create site-wide presence-absence maps & summary info - run `summarise_NZ_wide_info.py` and `summarise_NZ_wide_info_quarterly.py`
+7. Review in the the kelp dashboard. If suitable for deployment to the external production website talk to Rose or Craig about updating in the deployment.
 
 
 # Running Kelp Dashboard
