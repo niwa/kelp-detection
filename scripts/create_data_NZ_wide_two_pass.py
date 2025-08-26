@@ -122,7 +122,7 @@ def main():
                 for index in range(len(data["kelp"].time)):
                     kelp = data["kelp"].isel(time=index).load()
                     #kelp = kelp.rio.clip(roi.geometry.values)
-                    filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                    filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
 
                     kelp_info["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                     kelp_info["file"].append(filename)
