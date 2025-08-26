@@ -45,9 +45,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites_quarterly" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites_quarterly") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI
         site_bbox = row.geometry.bounds
@@ -76,14 +74,14 @@ def main():
         else:
             print(f"\tSkip presence absence for: {site_name} - already exists")
             
-        # Save out RGB if not already produced
+        # Generate RGBs for each quarter (for reports, etc), and save out tile ID & percentile info for dashboard
         tile_ids = []
         percentages_2 = []
         percentages_98 = []
-        if len(list(remote_raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns:
+        if len(list(raster_path.glob('rgb_*.nc'))) < len(kelp_info) or "Satellite Tile IDs" not in kelp_info.columns:
             for index, row in kelp_info.iterrows():
                 date_YYMMDD = row['max coverage date'] 
-                filename = remote_raster_path / f'rgb_{date_YYMMDD}.nc'
+                filename = raster_path / f'rgb_{date_YYMMDD}.nc'
 
                 # run pystac client search to see available dataset
                 print(f"\tGet Tile(s) ID: {date_YYMMDD}")
@@ -125,7 +123,7 @@ def main():
             kelp_info["Satellite Tile IDs"] = tile_ids
             kelp_info["Percentile 2"] = percentages_2
             kelp_info["Percentile 98"] = percentages_98
-            kelp_info.to_csv(raster_path / "info_quarterly.csv"☻)
+            kelp_info.to_csv(raster_path / "info_quarterly.csv")
 
 
 if __name__ == '__main__':

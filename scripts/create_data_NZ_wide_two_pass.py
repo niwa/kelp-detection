@@ -1,30 +1,36 @@
 
 import pystac_client
-import pystac
+import leafmap
 import odc.stac
-import rioxarray
-import xarray
-import pathlib
 import pandas
 import geopandas
-import shapely
 import numpy
-import dotenv
 import datetime
 import planetary_computer
-import os
-import geoapis.vector
 import utils
 
 def main():
-    """ Create site datasets.
+    """ Runs through 'NZ_wide' sites then across date range and for dates
+      with satellite imagery meeting cloud cover criteria it then runs a two
+      pass algorithm for kelp detection with built in anomaly detection.
+
+      Each date with kelp saves kelp extents as a GeoPackage and also adds
+      row to the info.csv for each site with date specific information 
+      (including satellite tile information).
+
+      Note this requires certain vector information which is created the
+      first time the script is run. See utils.create_test_sites() for more
+      details.
     """
-    
+    debug = False
+
     test_sites_andra_and_leigh_wsg_84 = utils.create_large_ORC_sites(distance_offshore = 3_000)
-    #test_sites_andra_and_leigh_wsg_84 = utils.create_test_sites(distance_offshore = 3_000)
+    #test_sites = utils.create_test_sites(distance_offshore = 3_000)
     #test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
     test_sites_wsg = test_sites_andra_and_leigh_wsg_84.to_crs(utils.CRS_WSG)
     land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
+
+    
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
                  "collections": ["sentinel-2-l2a"]}
@@ -48,10 +54,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        #remote_raster_path = raster_path
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ORC22502_outputs") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI - convex hull to allow search
         site_bbox = row.geometry.bounds # shapely.box(*row.geometry.bounds) #.to_crs(utils.CRS_WSG).iloc[0].geometr
@@ -127,18 +130,36 @@ def main():
                     kelp_info["ocean cloud percentage"].append(ocean_cloud_percentage[index])
                     #kelp.rio.to_raster(raster_path / f'kelp_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")  # missing min and max values when viewed in QGIS
                     
-                    #data["SCL"].isel(time=index).rio.to_raster(raster_path / f'scl_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.tif', compress="deflate", driver="COG")
-                    encoding = {}
-                    for key in data.data_vars:
-                        encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
-                    data.isel(time=index).to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
+                    kelp_polygons = utils.polygon_from_raster(kelp)
+                    kelp_polygons.to_file(filename, index=False)
+                    
+                    # Lookup STAC tile ID and recommended display range
+                    tile_ids = ""; percentile_2 = ""; percentile_98 = ""
+                    search = client.search(collections=catalogue["collections"], bbox=site_bbox, datetime=month_YYMM, query=filters)
+                    for item in search.items():
+                        tile_ids += f"{item.id}, "
+                        stats=leafmap.stac_stats(collection=catalogue["collections"][0], item=item.id, titiler_endpoint="pc", assets=rgb_bands)
+                        percentile_2_i = []; percentile_98_i = []
+                        for key, value in stats.items():
+                            percentile_2_i.append(value['percentile_2']); percentile_98_i.append(value['percentile_98'])
+                        percentile_2_i = numpy.array(percentile_2_i).mean(); percentile_98_i = numpy.array(percentile_98_i).mean()
+                        percentile_2 += f"{round(percentile_2_i)}, "; percentile_98 += f"{round(percentile_98_i)}, "
+                    kelp_info["Satellite Tile IDs"] = tile_ids; kelp_info["Percentile 2"] = percentile_2; kelp_info["Percentile 98"] = percentile_98
+                    
+                    if debug:
+                        encoding = {}
+                        for key in data.data_vars:
+                            encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
+                        filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                        data.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
-                pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(remote_raster_path / "info.csv", index=False)
+                if debug:
+                    pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
 
         # Save results
         kelp_info = pandas.DataFrame.from_dict(kelp_info, orient='columns')
         kelp_info.to_csv(raster_path / "info.csv", index=False)
-        kelp_info.to_csv(remote_raster_path / "info.csv", index=False)
+
 
 if __name__ == '__main__':
 

@@ -20,6 +20,8 @@ import json
 def main():
     """ Create site datasets.
     """
+
+    debug = False
     
     test_sites = utils.create_test_sites(distance_offshore = 3_000)
     test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
@@ -50,7 +52,6 @@ def main():
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
     anomaly_detection_factor = 20
-    debug = False
     
     # Second pass - remove beds with less than the min_pixls, then buffer outward by the specified number of pixels
     buffer = 10; min_pixels = 10 # 5
@@ -67,9 +68,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites_quarterly" / f"{site_name}"
-        remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs") / "test_sites_quarterly" / f"{site_name}_quarterly"
         raster_path.mkdir(parents=True, exist_ok=True)
-        remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI - convex hull to allow search
         site_bbox = row.geometry.bounds
@@ -86,10 +85,10 @@ def main():
             kelp_info = {"date": [], "file": [], "area": [], "dates considered": [], "max coverage date": []}
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
         
-        if (raster_path / "info_individual.csv").exists():
-            kelp_info_individual = pandas.read_csv(raster_path / "info_individual.csv").to_dict()
+        if (raster_path / "info_all_dates.csv").exists():
+            kelp_info_all_dates = pandas.read_csv(raster_path / "info_all_dates.csv").to_dict()
         else:
-            kelp_info_individual = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
+            kelp_info_all_dates = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
 
         years = list(range(2016, 2025)) # 2016, 2025
         for year in years:
@@ -171,7 +170,7 @@ def main():
                 # Save combined polygon and area
                 if debug:
                     encoding =  {"kelp": {"zlib": True, "complevel": 9, "grid_mapping": data["kelp"].encoding["grid_mapping"]}}
-                    data["kelp"].to_netcdf(remote_raster_path / f'kelp_{date_range.replace("/","_")}.nc', format="NETCDF4", engine="netcdf4", encoding=encoding)
+                    data["kelp"].to_netcdf(raster_path / f'kelp_{date_range.replace("/","_")}.nc', format="NETCDF4", engine="netcdf4", encoding=encoding)
                 kelp_polygons = []
                 for index in range(len(data["kelp"].time)):
                     kelp_polygons.append(utils.polygon_from_raster(data["kelp"].isel(time=index)).dissolve())
@@ -189,34 +188,28 @@ def main():
                 kelp_info["dates considered"].append(data.time.dt.strftime("%B %d, %Y").data)
                 kelp_info["max coverage date"].append(max_coverage_date)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info_quarterly.csv", index=False)
-                if debug: 
-                    pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(remote_raster_path / "info_quarterly.csv", index=False)
 
                 for index in range(len(data["kelp"].time)):
 
-                    filename = remote_raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                    filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
 
                     data_i = data.isel(time=index)
                     kelp = data_i["kelp"].load()
-                    kelp_info_individual["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
-                    kelp_info_individual["file"].append(filename)
-                    kelp_info_individual["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
-                    kelp_info_individual["ocean cloud percentage"].append(ocean_cloud_percentage[index])
+                    kelp_info_all_dates["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
+                    kelp_info_all_dates["file"].append(filename)
+                    kelp_info_all_dates["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
+                    kelp_info_all_dates["ocean cloud percentage"].append(ocean_cloud_percentage[index])
                     
                     if debug: # Save each date data separately
                         encoding = {}
                         for key in data_i.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
                             data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
-                    pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(raster_path / "info.csv", index=False)
-                    if debug: 
-                        pandas.DataFrame.from_dict(kelp_info_individual, orient='columns').to_csv(remote_raster_path / "info.csv", index=False)
+                    pandas.DataFrame.from_dict(kelp_info_all_dates, orient='columns').to_csv(raster_path / "info_all_dates.csv", index=False)
 
         # Save results
-        kelp_info_individual = pandas.DataFrame.from_dict(kelp_info_individual, orient='columns')
-        kelp_info_individual.to_csv(raster_path / "info_individual.csv", index=False)
-        if debug: 
-            kelp_info_individual.to_csv(remote_raster_path / "info_individual.csv", index=False)
+        kelp_info_all_dates = pandas.DataFrame.from_dict(kelp_info_all_dates, orient='columns')
+        kelp_info_all_dates.to_csv(raster_path / "info_all_dates.csv", index=False)
 
 if __name__ == '__main__':
     main()
