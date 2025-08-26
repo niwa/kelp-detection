@@ -29,9 +29,6 @@ def main():
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
                  "collections": ["sentinel-2-l2a"]}
 
-    date_format = "%Y-%m-%d"
-    raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
-
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") 
     
     # Read in date to ignore file
@@ -92,7 +89,8 @@ def main():
         else:
             print(f"\tSkip presence absence for: {site_name} - already exists")
             
-        # Save out RGB if not already produced
+        # NOTE doesn't apprear to be nessecary as this is recorded in the create_data_NZ_wide_two_pass script
+        # saves out tile ID & percentile info for dashboard display
         tile_ids = []
         percentages_2 = []
         percentages_98 = []

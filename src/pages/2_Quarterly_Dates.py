@@ -76,8 +76,6 @@ def main():
         page_icon="🌏",
         layout="wide",
     )
-    display_size = 700
-    date_format = "%Y-%m-%d"
     
     if 'quarterly_index' not in streamlit.session_state:
         streamlit.session_state.quarterly_index = []

@@ -74,7 +74,7 @@ def main():
         else:
             print(f"\tSkip presence absence for: {site_name} - already exists")
             
-        # Save out RGB if not already produced
+        # Generate RGBs for each quarter (for reports, etc), and save out tile ID & percentile info for dashboard
         tile_ids = []
         percentages_2 = []
         percentages_98 = []
