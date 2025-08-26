@@ -23,22 +23,21 @@ def main():
         page_title="Kelp Dashboard",
         page_icon="🌊",
     )
- 
-    data_path = pathlib.Path.cwd() / "data"
-    land = geopandas.read_file(data_path / "vectors" / "main_islands.gpkg")
-    regions = geopandas.read_file(data_path / "vectors" / "regions.gpkg")
-    region_names = ["Otago", "Southland", "Canterbury", "Westland"]
-    
-    
-    if "land" not in streamlit.session_state:
-        streamlit.session_state["land"] = land
-    if "data_path" not in streamlit.session_state:
-        streamlit.session_state["data_path"] = data_path
     
      # Dashboard
-    streamlit.title("Kelp Dashboard")
+    streamlit.title("NIWA internal Kelp Dashboard")
     
-    streamlit.subheader("Pelase select one of the tabs. See the left hand (cick the `>` if not visible. 'Test Sites' is currently most in use.")
+    streamlit.subheader("This is used for data QA/QC during the data update process")
+
+    streamlit.markdown("""
+        **Dashboard Overview:** This is integrated within the kelp-detection GitHub respositry, which has several scripts for updating and analyzing kelp data. Steps for data update and QA/QC are:
+        1. Create kelp detections all dates - run `create_data_NZ_wide_two_pass.py` script
+        2. Review 'All Dates' tab in the Dashboard for any anomalous dates to ignore. (click the `>` if this tab is not visible.)
+        3. Update `sites_dates_to_ignore.json` with dates to ignore. <span style="color: red;">IMPORTANT</span> - date format is YYYY-MM-DD
+        4. Create kelp detections quarterly averaged - run `create_data_NZ_wide_two_pass_quarterly.py`
+        5. Create site-wide presence-absence maps & summary info - run `summarise_NZ_wide_info.py` and `summarise_NZ_wide_info_quarterly.py`
+        6. Review in the dashboard. If suitable for deployment to the external production website talk to Rose or Craig about updating in the deployment.                  
+                       """)
     
 if __name__ == '__main__':
     main()

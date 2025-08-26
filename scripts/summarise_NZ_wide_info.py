@@ -29,9 +29,6 @@ def main():
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
                  "collections": ["sentinel-2-l2a"]}
 
-    date_format = "%Y-%m-%d"
-    raster_defaults = {"resolution": 10, "nodata": 0, "dtype": "uint16"}
-
     bands = list(utils.SENTINEL_2B_BAND_INFO.keys()); bands.append("SCL") 
     
     # Read in date to ignore file
@@ -55,9 +52,7 @@ def main():
         
         print(f"Test site: {site_name}") 
         raster_path = utils.DATA_PATH / "rasters" / "test_sites" / f"{site_name}"
-        #remote_raster_path = pathlib.Path("/nesi/nobackup/niwa03660/ZBD2023_outputs/test_sites") / f"{site_name}"
         raster_path.mkdir(parents=True, exist_ok=True)
-        #remote_raster_path.mkdir(parents=True, exist_ok=True)
     
         # Geometry of AOI
         site_bbox = row.geometry.bounds
@@ -66,7 +61,7 @@ def main():
         # Check if any results to post process
         if (raster_path / "info.csv").exists():
             kelp_info = pandas.read_csv(raster_path / "info.csv")
-            #kelp_info = kelp_info[['date','file','area','dates considered', 'max coverage date']]
+            #kelp_info = kelp_info[['date', 'file', 'area', 'ocean cloud percentage', "Satellite Tile IDs", "Percentile 2", "Percentile 98"]] # remove any summary info previously created
         else:
             print(f"No data for site {site_name}. Skipping post processing.")
             continue
@@ -82,15 +77,10 @@ def main():
                 if date in dates_to_ignore:
                     file_names.append("")
                     continue
-                
-                kelp = rioxarray.rioxarray.open_rasterio(file_name, chunks=True).squeeze("band", drop=True)["kelp"]
-                kelp_polygon = utils.polygon_from_raster(kelp).dissolve()
-                kelp_polygon.to_file(file_name.parent / f"{date}_kelp.gpkg")
-                file_names.append(file_name.parent / f"{date}_kelp.gpkg")
-                kelp_polygons.append(kelp_polygon.to_crs(utils.CRS))
-                '''#kelp_polygons.append(
-                    geopandas.read_file(raster_path / pathlib.Path(file_name).name).to_crs(utils.CRS)
-                )'''
+                file_names.append(file_name)
+                kelp_polygons.append(
+                    geopandas.read_file(file_name).to_crs(utils.CRS)
+                )
             kelp_polygons = pandas.concat(kelp_polygons).dissolve()
             kelp_info["proportion of max coverage"] = kelp_info["area"] / kelp_polygons.area.sum()
             kelp_info["file"] = file_names
@@ -99,7 +89,8 @@ def main():
         else:
             print(f"\tSkip presence absence for: {site_name} - already exists")
             
-        # Save out RGB if not already produced
+        # NOTE doesn't apprear to be nessecary as this is recorded in the create_data_NZ_wide_two_pass script
+        # saves out tile ID & percentile info for dashboard display
         tile_ids = []
         percentages_2 = []
         percentages_98 = []

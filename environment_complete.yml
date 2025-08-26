@@ -4,8 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  pip:
-      - geoviews
+  - pip:
       - jupyterlab
       - rioxarray
       - geoapis
