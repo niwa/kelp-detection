@@ -43,6 +43,8 @@ def main():
     
     filter_cloud_percentage = 30
     max_ocean_cloud_percentage = 5
+    rgb_bands = utils.get_band_names_from_common(["red", "green", "blue"])
+
 
     # use publically available stac link such as
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
@@ -64,7 +66,7 @@ def main():
         # Start from year of failure if already partial results
         if (raster_path / "info.csv").exists():
             kelp_info = pandas.read_csv(raster_path / "info.csv")
-            kelp_info = kelp_info[['date', 'file', 'area', 'ocean cloud percentage']]
+            kelp_info = kelp_info[['date', 'file', 'area', 'ocean cloud percentage', "Satellite Tile IDs", "Percentile 2", "Percentile 98"]]
             max_date = datetime.datetime.strptime(kelp_info["date"].max(), '%Y-%m-%d')
             kelp_info = kelp_info.to_dict(orient='list')
         else:
@@ -123,8 +125,11 @@ def main():
                 for index in range(len(data["kelp"].time)):
                     kelp = data["kelp"].isel(time=index).load()
                     #kelp = kelp.rio.clip(roi.geometry.values)
-                    filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                    #filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
+                    filename = raster_path / f'{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}_kelp.gpkg'
 
+                    data_i = data.isel(time=index)
+                    kelp = data_i["kelp"].load()
                     kelp_info["area"].append(abs(int(kelp.notnull().sum() * kelp.x.resolution * kelp.y.resolution)))
                     kelp_info["file"].append(filename)
                     kelp_info["date"].append(pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format))
@@ -152,7 +157,7 @@ def main():
                         for key in data.data_vars:
                             encoding[key] =  {"zlib": True, "complevel": 9, "grid_mapping": data[key].encoding["grid_mapping"]}
                         filename = raster_path / f'data_{pandas.to_datetime(data["kelp"].time.data[index]).strftime(date_format)}.nc'
-                        data.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
+                        data_i.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
                 pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)
                 if debug:
                     pandas.DataFrame.from_dict(kelp_info, orient='columns').to_csv(raster_path / "info.csv", index=False)

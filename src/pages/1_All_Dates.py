@@ -77,7 +77,7 @@ def get_map(kelp_total_extents: geopandas.GeoDataFrame, kelp_info: pandas.DataFr
         streamlit.session_state.date_by_date_map_index = streamlit.session_state.date_by_date_index
     elif len(streamlit.session_state.date_by_date_map_index):
 
-    return streamlit.session_state.date_by_date_map
+        return streamlit.session_state.date_by_date_map
 
 def main():
     """ Create / Update the geofabric summary information and display in a dashboard.
