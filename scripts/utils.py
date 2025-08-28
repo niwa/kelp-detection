@@ -272,6 +272,27 @@ def create_test_sites(distance_offshore = 4_000):
         test_sites = geopandas.GeoDataFrame({"name": ["Orero_Point", "Kelp_Reef", "Kakanui_Point", "Waitaki", "Matakaea", "Bobbys_Head", "South_Beach", "Waikouaiti", "Karitane", "Warrington", "Taieri_Mouth", "Taieri_Beach", "Smiths_Beach", " Kaka_Point", "Campbell_Point", "Catlins_River"], 
                                                "geometry": [orere_point, kelp_reef, kakanui_point, waitaki, matakaea, bobbys_head, south_beach, waikouaiti, karitane, warrington, taieri_mouth, taieri_beach, smiths_beach, kaka_point, campbell_point, catlins_river]}, crs=CRS)
 
+            # clip to max distance offshore
+        buffer_path = DATA_PATH / "vectors" / f"offshore_buffer_{buffer_label}_main_islands.gpkg"
+        if not buffer_path.exists():
+            print(f"Creating buffer at: {buffer_path}")
+            island_names = ["North Island or Te Ika-a-Māui", "South Island or Te Waipounamu", "Stewart Island/Rakiura", "Chatham Island", "Auckland Island", "Campbell Island/Motu Ihupuku"]
+            download_nz_outline()
+            islands = geopandas.read_file(DATA_PATH / "vectors" / "nz_islands.gpkg")
+            select_islands = islands[islands["name"].isin(island_names)]
+            select_islands = islands[islands.intersects(shapely.geometry.box(*select_islands.total_bounds))]
+            offshore_buffer = geopandas.GeoDataFrame(geometry=select_islands.buffer(distance_offshore), crs=CRS).overlay(select_islands, how='difference')
+            offshore_buffer.to_file(buffer_path)
+        else:
+    
+            offshore_buffer = geopandas.read_file(buffer_path)
+
+        test_sites = test_sites.clip(offshore_buffer.dissolve().geometry.loc[0])
+        test_sites.to_file(test_sites_path)
+    else:
+        test_sites = geopandas.read_file(test_sites_path)
+    
+    return test_sites
 
 def create_large_ORC_sites(distance_offshore = 4_000):
 
