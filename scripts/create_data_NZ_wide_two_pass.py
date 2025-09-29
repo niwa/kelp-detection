@@ -48,6 +48,8 @@ def main():
     anomaly_detection_factor = 20
     rgb_bands = utils.get_band_names_from_common(["red", "green", "blue"])
 
+    # Second pass - remove beds with less than the min_pixls, then buffer outward by the specified number of pixels
+    buffer = 10; min_pixels = 10 # 5
 
     # use publically available stac link such as
     odc.stac.configure_rio(cloud_defaults=True, aws={"aws_unsigned": True})
@@ -77,7 +79,6 @@ def main():
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
 
         years = list(range(2016, 2026)) # 2016, 2025
-        years = list(range(2016, 2025)) # 2016, 2025
         for year in years:
             months = [f"{year}-{str(month).zfill(2)}" for month in list(range(1, 13))]
 
@@ -125,6 +126,7 @@ def main():
                 # Calculate Kelp from thresholds
                 data = utils.threshold_kelp(data, thresholds, roi)
 
+                # Check for any big differences in kelp area using the anomaly thresholds
                 data["kelp_original"] = data["kelp"].copy(deep=True)
                 data = utils.threshold_kelp(data, anomaly_thresholds, roi)
                 anomalous = data["kelp_original"].notnull().sum(dim=["x", "y"]) > anomaly_detection_factor * data["kelp"].notnull().sum(dim=["x", "y"])
