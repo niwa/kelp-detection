@@ -89,7 +89,7 @@ def main():
     streamlit.button("Re-run")
     streamlit.title('Kelp Demo - click area plot to select raster display')
     
-    test_sites = geopandas.read_file(data_path / "vectors" / "test_sites_offshore_3km.gpkg")
+    test_sites = geopandas.read_file(data_path / "vectors" / "ORC_large_test_sites_offshore_3km.gpkg")
     
     location = streamlit.selectbox("Select tile to display", (test_sites["name"]), index=0,)
     
