@@ -77,6 +77,7 @@ def main():
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
 
         years = list(range(2016, 2026)) # 2016, 2025
+        years = list(range(2016, 2025)) # 2016, 2025
         for year in years:
             months = [f"{year}-{str(month).zfill(2)}" for month in list(range(1, 13))]
 
@@ -124,6 +125,7 @@ def main():
                 # Calculate Kelp from thresholds
                 data = utils.threshold_kelp(data, thresholds, roi)
 
+                data["kelp_original"] = data["kelp"].copy(deep=True)
                 data = utils.threshold_kelp(data, anomaly_thresholds, roi)
                 anomalous = data["kelp_original"].notnull().sum(dim=["x", "y"]) > anomaly_detection_factor * data["kelp"].notnull().sum(dim=["x", "y"])
                 if anomalous.any():
