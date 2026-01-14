@@ -25,7 +25,7 @@ def main():
     debug = False
 
     #test_sites_andra_and_leigh_wsg_84 = utils.create_large_ORC_sites(distance_offshore = 3_000)
-    test_sites = utils.create_test_sites(distance_offshore = 3_000)
+    test_sites = utils.create_test_sites(distance_offshore = 3000)
     test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
     #test_sites_wsg = test_sites_andra_and_leigh_wsg_84.to_crs(utils.CRS_WSG)
     land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
@@ -100,8 +100,8 @@ def main():
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
 
                 data = utils.harmonize_post_2022(data)
+                #roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
                 roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
-                #roi = test_sites_andra_and_leigh_wsg_84.to_crs(data["SCL"].rio.crs).loc[[site_index]]
 
 
                 # remove if no data
@@ -182,7 +182,9 @@ def main():
                             percentile_2_i.append(value['percentile_2']); percentile_98_i.append(value['percentile_98'])
                         percentile_2_i = numpy.array(percentile_2_i).mean(); percentile_98_i = numpy.array(percentile_98_i).mean()
                         percentile_2 += f"{round(percentile_2_i)}, "; percentile_98 += f"{round(percentile_98_i)}, "
-                    kelp_info["Satellite Tile IDs"] = tile_ids; kelp_info["Percentile 2"] = percentile_2; kelp_info["Percentile 98"] = percentile_98
+                    kelp_info["Satellite Tile IDs"].append(tile_ids)
+                    kelp_info["Percentile 2"].append(percentile_2)
+                    kelp_info["Percentile 98"].append(percentile_98)
                     
                     if debug:
                         encoding = {}
