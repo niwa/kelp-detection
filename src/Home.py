@@ -4,7 +4,7 @@ import argparse
 import pathlib
 import geopandas
 import streamlit_folium
-import pages.scripts.colourmaps
+#import pages.scripts.colourmaps
 import matplotlib.colors
 
 
@@ -25,7 +25,7 @@ def main():
     )
     
      # Dashboard
-    streamlit.title("NIWA internal Kelp Dashboard")
+    streamlit.title("Earth Sciences internal Kelp Dashboard for Otago")
     
     streamlit.subheader("This is used for data QA/QC during the data update process")
 

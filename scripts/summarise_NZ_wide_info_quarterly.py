@@ -23,6 +23,8 @@ def main():
     
     test_sites = utils.create_test_sites(distance_offshore = 3_000)
     test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
+    #test_sites_andra_and_leigh_wsg_84 = utils.create_large_ORC_sites(distance_offshore = 3_000)
+    #test_sites_wsg = test_sites_andra_and_leigh_wsg_84.to_crs(utils.CRS_WSG)
     land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
@@ -112,13 +114,14 @@ def main():
                 data = odc.stac.load(search.items(), bbox=site_bbox, bands=bands,  chunks={}, groupby="solar_day", 
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
                 roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
+                #roi = test_sites_andra_and_leigh_wsg_84.to_crs(data["SCL"].rio.crs).loc[[site_index]]
 
                 rgb = utils.normalise_rgb(data.isel(time=0), rgb_bands)
                 utils.update_raster_defaults(rgb)
                 rgb = rgb.to_array("rgb", name="Satellite RGB").rio.clip(roi.geometry)
                 encoding = {"Satellite RGB": {"zlib": True, "complevel": 9, "grid_mapping": data[rgb_bands[0]].encoding["grid_mapping"]}}
                 rgb.load()
-                rgb.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
+            #    rgb.to_netcdf(filename, format="NETCDF4", engine="netcdf4", encoding=encoding)
             # add tile id's and display ranges to the CSV
             kelp_info["Satellite Tile IDs"] = tile_ids
             kelp_info["Percentile 2"] = percentages_2

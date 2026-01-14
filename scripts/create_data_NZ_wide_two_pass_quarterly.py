@@ -25,6 +25,8 @@ def main():
     
     test_sites = utils.create_test_sites(distance_offshore = 3_000)
     test_sites_wsg = test_sites.to_crs(utils.CRS_WSG)
+    #test_sites_andra_and_leigh_wsg_84 = utils.create_large_ORC_sites(distance_offshore = 3_000)
+    #test_sites_wsg = test_sites_andra_and_leigh_wsg_84.to_crs(utils.CRS_WSG)
     land = geopandas.read_file(utils.DATA_PATH / "vectors" / "main_islands.gpkg")
 
     catalogue = {"url": "https://planetarycomputer.microsoft.com/api/stac/v1",
@@ -86,11 +88,11 @@ def main():
             max_date = datetime.datetime.strptime("2015-01-31", '%Y-%m-%d')
         
         if (raster_path / "info_all_dates.csv").exists():
-            kelp_info_all_dates = pandas.read_csv(raster_path / "info_all_dates.csv").to_dict()
+            kelp_info_all_dates = pandas.read_csv(raster_path / "info_all_dates.csv").to_dict(orient='list')
         else:
             kelp_info_all_dates = {"date": [], "file": [], "area": [], "ocean cloud percentage": []}
 
-        years = list(range(2016, 2025)) # 2016, 2025
+        years = list(range(2016, 2026)) # 2016, 2026
         for year in years:
             quarters = [f"{year-1}-12/{year}-02", f"{year}-03/{year}-05", f"{year}-06/{year}-08", f"{year}-09/{year}-11"]
 
@@ -112,7 +114,8 @@ def main():
                                     resolution = raster_defaults["resolution"], dtype=raster_defaults["dtype"], nodata=raster_defaults["nodata"])
                 data = utils.harmonize_post_2022(data)
                 roi = test_sites.to_crs(data["SCL"].rio.crs).loc[[site_index]]
-                
+                #roi = test_sites_andra_and_leigh_wsg_84.to_crs(data["SCL"].rio.crs).loc[[site_index]]
+
                 # remove any date to ignore
                 mask_dates_to_ignore = data.time.isnull().data
                 for date_to_ignore in dates_to_ignore:
