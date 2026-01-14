@@ -104,7 +104,6 @@ def main():
     streamlit.title('Kelp Demo - click area plot to select raster display')
     
     test_sites = geopandas.read_file(data_path / "vectors" / "test_sites_offshore_3km.gpkg")
-    #test_sites = geopandas.read_file(data_path / "vectors" / "ORC_large_test_sites_offshore_3km.gpkg")
     
     location = streamlit.selectbox("Select tile to display", (test_sites["name"]), index=0,)
     
@@ -185,7 +184,8 @@ def main():
         if folium_map is not None:
             streamlit_folium.folium_static(folium_map, width=900)
         else:
-            streamlit.warning("Map could not be generated.")
+            streamlit.warning("No map generated. Click on the same date again to force re-generation.")
+
 
 if __name__ == '__main__':
     main()
