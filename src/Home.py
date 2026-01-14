@@ -25,7 +25,7 @@ def main():
     )
     
      # Dashboard
-    streamlit.title("Earth Sciences NZ internal Kelp Dashboard")
+    streamlit.title("Earth Sciences internal Kelp Dashboard for Otago")
     
     streamlit.subheader("This is used for data QA/QC during the data update process")
 
